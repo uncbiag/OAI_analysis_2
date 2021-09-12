@@ -6,6 +6,8 @@ import itk
 
 import oai_analysis_2.analysis_object
 
+import numpy as np
+
 TEST_DATA_DIR = pathlib.Path(__file__).parent / "test_files"
 
 class TestOAIAnalysis(unittest.TestCase):
@@ -20,6 +22,13 @@ class TestOAIAnalysis(unittest.TestCase):
         correct_TC_segmentation = itk.imread(str(TEST_DATA_DIR / "colab_case/TC_probmap.nii.gz"))
         
         FC, TC = self.analysis_object.segment(input_image)
+
+        print(np.sum(itk.ComparisonImageFilter(FC, correct_FC_segmentation)))
+        print(np.sum(itk.ComparisonImageFilter(TC, correct_TC_segmentation)))
+
+
+        self.assertFalse(np.sum(itk.ComparisonImageFilter(FC, correct_FC_segmentation)) > 1)
+        self.assertFalse(np.sum(itk.ComparisonImageFilter(TC, correct_TC_segmentation)) > 1)
 
 
 if __name__ == "__main__":
