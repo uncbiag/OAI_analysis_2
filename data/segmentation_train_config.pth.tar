@@ -1,0 +1,36 @@
+{
+    "batch_size": 4,
+    "ckpoint_dir": "./ckpoints",
+    "data_dir": "/playpen/zhenlinx/Data/OAI_segmentation/Nifti_rescaled_LEFT",
+    "debug_mode": false,
+    "device": "cuda",
+    "experiment_name": "UNet_bias_Nifti_rescaled_LEFT_train1_patch_128_128_32_batch_4_sample_0.01-0.02_BCEWithLogitsLoss_lr_0.001",
+    "learning_rate": 0.001,
+    "log_dir": "./log",
+    "loss": "BCEWithLogitsLoss",
+    "loss_setting": {},
+    "lr_mode": "multiStep",
+    "model": "UNet",
+    "model_setting": {
+        "BN": false,
+        "bias": true,
+        "in_channels": 1,
+        "n_classes": 2
+    },
+    "n_epochs": 600,
+    "patch_size": [
+        128,
+        128,
+        32
+    ],
+    "print_batch_period": 15,
+    "rand_seed": 1234,
+    "random_seed": 1234,
+    "resume": null,
+    "save_ckpts_epoch_period": 10,
+    "training_list_file": "/playpen/zhenlinx/Data/OAI_segmentation/train1.txt",
+    "valid_batch_size": 4,
+    "valid_data_dir": "/playpen/zhenlinx/Data/OAI_segmentation/Nifti_rescaled_LEFT",
+    "valid_epoch_period": 50,
+    "validation_list_file": "/playpen/zhenlinx/Data/OAI_segmentation/validation1.txt"
+}
