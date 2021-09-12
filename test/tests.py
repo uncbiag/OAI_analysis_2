@@ -30,6 +30,14 @@ class TestOAIAnalysis(unittest.TestCase):
         self.assertFalse(np.sum(itk.ComparisonImageFilter(FC, correct_FC_segmentation)) > 1)
         self.assertFalse(np.sum(itk.ComparisonImageFilter(TC, correct_TC_segmentation)) > 1)
 
+    def testRegistration(self):
+        input_image = itk.imread(str(TEST_DATA_DIR / "colab_case/image_preprocessed.nii.gz"))
+
+        correct_registration = itk.imread(str(TEST_DATA_DIR / "colab_case/avsm/inv_transform_to_atlas.nii.gz"))
+
+        registration = self.analysis_object.register(input_image)
+        
+        self.assertFalse(np.sum(itk.ComparisonImageFilter(registration, correct_registration)) > 1)
 
 if __name__ == "__main__":
     unittest.main()
