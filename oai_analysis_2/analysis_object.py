@@ -19,7 +19,6 @@ class AnalysisObject:
             output_prob=True,
             output_itk=True,
         )
-        print(segmenter_config)
         self.segmenter = oai_analysis_2.segmentation.segmenter.Segmenter3DInPatchClassWise(
             mode="pred", config=segmenter_config
         )

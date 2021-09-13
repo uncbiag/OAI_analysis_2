@@ -23,8 +23,8 @@ class TestOAIAnalysis(unittest.TestCase):
         
         FC, TC = self.analysis_object.segment(input_image)
 
-        print(np.sum(itk.ComparisonImageFilter(FC, correct_FC_segmentation)))
-        print(np.sum(itk.ComparisonImageFilter(TC, correct_TC_segmentation)))
+        #print(np.sum(itk.ComparisonImageFilter(FC, correct_FC_segmentation)))
+        #print(np.sum(itk.ComparisonImageFilter(TC, correct_TC_segmentation)))
 
 
         self.assertFalse(np.sum(itk.ComparisonImageFilter(FC, correct_FC_segmentation)) > 1)
