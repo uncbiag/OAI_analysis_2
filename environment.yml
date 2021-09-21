@@ -1,12 +1,13 @@
 name: oai-analysis-2
 channels:
-  - conda-forge
   - pytorch
+  - uncbiag
   - defaults
 dependencies:
-  - pytorch=1.6
+  - mermaid
   - jupyter
   - pip
   - pip:
     - itk
     - itkwidgets
+    - girder_client

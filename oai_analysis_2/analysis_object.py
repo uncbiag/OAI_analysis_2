@@ -10,6 +10,7 @@ class AnalysisObject:
         if "cuda" in torch.testing.get_all_device_types():
             self.device = "cuda"
         else:
+            print("WARNING: CUDA NOT AVAILABLE, FALLING BACK TO CPU")
             self.device = "cpu"
         ## Initialize segmenter
 
