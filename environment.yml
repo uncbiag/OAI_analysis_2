@@ -1,7 +1,8 @@
 name: oai-analysis-2
 channels:
+  - conda-forge
   - pytorch
-  - uncbiag
+#  - uncbiag
   - defaults
 dependencies:
   - pytorch=1.6
