@@ -5,9 +5,9 @@ channels:
   - defaults
 dependencies:
   - mermaid
-  - jupyter
-  - pip
-  - pip:
-    - itk
-    - itkwidgets
-    - girder_client
+#  - jupyter
+#  - pip
+#  - pip:
+#    - itk
+#    - itkwidgets
+#    - girder_client
