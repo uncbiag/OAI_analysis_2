@@ -20,7 +20,8 @@ jobs:
         echo $CONDA/bin >> $GITHUB_PATH
     - name: Install dependencies
       run: |
-        conda env update --file environment.yml --name base
+        conda env create --file environment.yml
     - name: Test with unittest
       run: |
+        conda activate oai-analysis-2
         python -m unittest discover
