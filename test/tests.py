@@ -1,5 +1,6 @@
 import unittest
-
+import subprocess
+import sys
 import pathlib
 
 import itk
@@ -13,7 +14,9 @@ TEST_DATA_DIR = pathlib.Path(__file__).parent / "test_files"
 class TestOAIAnalysis(unittest.TestCase):
 
     def setUp(self):
+        subprocess.run(["girder-client",  "--api-url", "https://data.kitware.com/api/v1", "localsync", "6145e1332fa25629b9b1b2f7", TEST_DATA_DIR], stdout=sys.stdout)
         self.analysis_object = oai_analysis_2.analysis_object.AnalysisObject()
+
 
     def testSegmentation(self):
         input_image = itk.imread(str(TEST_DATA_DIR / "colab_case/image_preprocessed.nii.gz"))
