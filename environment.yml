@@ -4,10 +4,10 @@ channels:
   - uncbiag
   - defaults
 dependencies:
-  - mermaid
-#  - jupyter
-#  - pip
-#  - pip:
-#    - itk
-#    - itkwidgets
-#    - girder_client
+  - pytorch=1.6
+  - jupyter
+  - pip
+  - pip:
+    - itk
+    - itkwidgets
+    - girder_client
