@@ -4,7 +4,7 @@ channels:
   - uncbiag
   - defaults
 dependencies:
-  - mermaid
+  - pytorch=1.6
   - jupyter
   - pip
   - pip:
