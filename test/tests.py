@@ -11,10 +11,13 @@ import numpy as np
 
 TEST_DATA_DIR = pathlib.Path(__file__).parent / "test_files"
 
+def download_test_data():
+    subprocess.run(["girder-client",  "--api-url", "https://data.kitware.com/api/v1", "localsync", "6145e1332fa25629b9b1b2f7", TEST_DATA_DIR], stdout=sys.stdout)
+
 class TestOAIAnalysis(unittest.TestCase):
 
     def setUp(self):
-        subprocess.run(["girder-client",  "--api-url", "https://data.kitware.com/api/v1", "localsync", "6145e1332fa25629b9b1b2f7", TEST_DATA_DIR], stdout=sys.stdout)
+        download_test_data()
         self.analysis_object = oai_analysis_2.analysis_object.AnalysisObject()
 
 
