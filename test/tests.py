@@ -20,6 +20,10 @@ class TestOAIAnalysis(unittest.TestCase):
         download_test_data()
         self.analysis_object = oai_analysis_2.analysis_object.AnalysisObject()
 
+    def testImportsCPU(self):
+        # If we've gotten this far, we have succeeded
+        self.assertTrue(True)
+
 
     def testSegmentation(self):
         input_image = itk.imread(str(TEST_DATA_DIR / "colab_case/image_preprocessed.nii.gz"))
