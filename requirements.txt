@@ -1,0 +1,6 @@
+pytorch
+jupyter
+itk
+itkwidgets
+girder_client
+git+git://github.com/uncbiag/mermaid
