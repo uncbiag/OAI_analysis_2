@@ -20,9 +20,6 @@ class TestOAIAnalysis(unittest.TestCase):
         download_test_data()
         self.analysis_object = oai_analysis_2.analysis_object.AnalysisObject()
 
-    def testImportsCPU(self):
-        # If we've gotten this far, we have succeeded
-        self.assertTrue(True)
 
 
     def testSegmentation(self):
@@ -48,6 +45,11 @@ class TestOAIAnalysis(unittest.TestCase):
         registration = self.analysis_object.register(input_image)
         
         self.assertFalse(np.sum(itk.ComparisonImageFilter(registration, correct_registration)) > 1)
+
+class TestImports(unittest.TestCase):
+
+    def testImportsCPU(self):
+        self.analysis_object = oai_analysis_2.analysis_object.AnalysisObject()
 
 if __name__ == "__main__":
     unittest.main()
