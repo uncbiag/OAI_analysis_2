@@ -1,4 +1,4 @@
-![Tests](https://github.com/HastingsGreer/OAI_analysis_2/actions/workflows/test-action.yml/badge.svg)
+![Tests](https://github.com/uncbiag/OAI_analysis_2/actions/workflows/test-action.yml/badge.svg)
 
 Installation of dependencies and testing
 
