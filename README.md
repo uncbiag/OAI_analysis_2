@@ -1,12 +1,11 @@
-![Tests](https://github.com/HastingsGreer/OAI_analysis_2/actions/workflows/test-action.yml/badge.svg)
+![Tests](https://github.com/uncbiag/OAI_analysis_2/actions/workflows/test-action.yml/badge.svg)
 
 Installation of dependencies and testing
 
 ```
 git clone https://github.com/HastingsGreer/oai_analysis_2
 cd oai_analysis_2
-conda env create --file environment.yml
-conda activate oai-analysis-2
+pip install -r requirements.txt
 python -m unittest -v discover
 ```
 

@@ -1,11 +1,13 @@
 import unittest
 import subprocess
+import oai_analysis_2.utils
 import sys
 import pathlib
 
 import itk
 
 import oai_analysis_2.analysis_object
+import oai_analysis_2.registration
 
 import numpy as np
 
@@ -19,6 +21,7 @@ class TestOAIAnalysis(unittest.TestCase):
     def setUp(self):
         download_test_data()
         self.analysis_object = oai_analysis_2.analysis_object.AnalysisObject()
+
 
 
     def testSegmentation(self):
@@ -44,6 +47,22 @@ class TestOAIAnalysis(unittest.TestCase):
         registration = self.analysis_object.register(input_image)
         
         self.assertFalse(np.sum(itk.ComparisonImageFilter(registration, correct_registration)) > 1)
+
+class TestImports(unittest.TestCase):
+
+    def testImportsCPU(self):
+        self.analysis_object = oai_analysis_2.analysis_object.AnalysisObject()
+
+class TestICONRegistration(unittest.TestCase):
+    def setUp(self):
+        download_test_data()
+    def testRegistration(self):
+        ICON_obj = oai_analysis_2.registration.ICON_Registration()
+
+        image_A = itk.imread(str(TEST_DATA_DIR / "colab_case/image_preprocessed.nii.gz"))
+        image_B = itk.imread(oai_analysis_2.utils.get_data_dir() + "/atlas_60_LEFT_baseline_NMI/atlas_image.nii.gz")
+
+        ICON_obj.register(image_A, image_B)
 
 if __name__ == "__main__":
     unittest.main()
