@@ -1,4 +1,4 @@
-![Tests](https://github.com/uncbiag/OAI_analysis_2/actions/workflows/selfhosted-action.yml/badge.svg)
+[<img src="https://github.com/uncbiag/OAI_analysis_2/actions/workflows/selfhosted-action.yml/badge.svg">](https://github.com/uncbiag/OAI_analysis_2/actions)
 
 Installation of dependencies and testing
 
