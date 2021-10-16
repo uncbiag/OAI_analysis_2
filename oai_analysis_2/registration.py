@@ -1,9 +1,9 @@
 import easyreg
 import demo.demo_for_easyreg_eval as demo
 import mermaid
-
+import numpy as np
 import icon_registration.pretrained_models
-
+import icon_registration.network_wrappers
 import torch
 
 
@@ -22,10 +22,24 @@ class AVSM_Registration:
 
 class ICON_Registration:
     def __init__(self):
-        self.register_object = icon_registration.pretrained_models.OAI_knees_registration_model(pretrained=True)
+        self.register_module = icon_registration.pretrained_models.OAI_knees_registration_model(pretrained=True)
+        icon_registration.network_wrappers.adjust_batch_size(self.register_module, 1)
+        self.register_module.cuda()
 
     def register(self, fixed_image, moving_image):
-        self.register_object
+
+        def preprocess(itk_image):
+            
+            iA = torch.Tensor(np.array(itk_image))
+            iA = torch.nn.functional.avg_pool3d(iA[None, None], 2).cuda()
+
+            print(torch.min(iA), torch.max(iA))
+
+            return iA
+
+        iA = preprocess(fixed_image)
+        iB = preprocess(moving_image)
+        self.register_module(iA, iB)
 
 
 
