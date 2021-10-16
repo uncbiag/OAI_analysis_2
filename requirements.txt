@@ -1,0 +1,8 @@
+torch
+jupyter
+itk
+itkwidgets
+girder_client
+icon_registration
+git+git://github.com/uncbiag/mermaid
+git+git://github.com/uncbiag/easyreg
