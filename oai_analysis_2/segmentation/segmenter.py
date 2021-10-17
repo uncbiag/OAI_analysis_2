@@ -8,7 +8,7 @@ import numpy as np
 
 from .image_transforms import Partition
 from .utils import initialize_model
-from .module_parameters import load_jason_to_dict
+from mermaid.module_parameters import load_jason_to_dict
 from .networks import get_network
 class Segmenter(ABC):
     @abstractmethod
