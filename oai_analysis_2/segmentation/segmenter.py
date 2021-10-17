@@ -8,8 +8,14 @@ import numpy as np
 
 from .image_transforms import Partition
 from .utils import initialize_model
-from mermaid.module_parameters import load_jason_to_dict
+from mermaid.module_parameters import ParameterDict
 from .networks import get_network
+
+def load_json_to_dict(json_file):
+    para = ParameterDict()
+    para.load_JSON(json_file)
+    return para.ext
+
 class Segmenter(ABC):
     @abstractmethod
     def __init__(self, *args, **kwargs):
@@ -43,7 +49,7 @@ class Segmenter3DInPatch(Segmenter):
         pass
 
     def pred_setup(self):
-        training_config = load_jason_to_dict(self.config["training_config_file"])
+        training_config = load_json_to_dict(self.config["training_config_file"])
         self.partition = Partition(training_config["patch_size"], self.config["overlap_size"],
                                                  padding_mode='reflect', mode="pred")
         # setup model
