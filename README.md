@@ -16,3 +16,6 @@ To view the demo notebooks:
 cd notebooks
 jupyter notebook
 ```
+
+
+upload test data to https://data.kitware.com/#collection/6205586c4acac99f42957ac3/folder/620559344acac99f42957d63
