@@ -14,7 +14,7 @@ import numpy as np
 TEST_DATA_DIR = pathlib.Path(__file__).parent / "test_files"
 
 def download_test_data():
-    subprocess.run(["girder-client",  "--api-url", "https://data.kitware.com/api/v1", "localsync", "62055aaf4acac99f42959747", TEST_DATA_DIR], stdout=sys.stdout)
+    subprocess.run(["girder-client",  "--api-url", "https://data.kitware.com/api/v1", "localsync", "620559344acac99f42957d63", TEST_DATA_DIR], stdout=sys.stdout)
 
 class TestOAIAnalysis(unittest.TestCase):
 
