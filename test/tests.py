@@ -46,7 +46,7 @@ class TestOAIAnalysis(unittest.TestCase):
         registration = self.analysis_object.register(input_image)
         
         #registration object is an itk transform. Need to verify that it is correct in test, but it appears correct
-        print(regsitration)
+        print(registration)
         #self.assertFalse(np.sum(itk.ComparisonImageFilter(registration, correct_registration)) > 1)
 
 class TestImports(unittest.TestCase):
