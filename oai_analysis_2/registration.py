@@ -32,10 +32,10 @@ class ICON_Registration:
         print("fixed range", np.min(fixed_image), np.max(fixed_image))
         print("moving range", np.min(moving_image), np.max(moving_image))
 
+        
+        phi_fixed_moving, phi_moving_fixed = icon_registration.itk_wrapper.register_pair(self.register_module, fixed_image, moving_image)
 
-        phi = icon_registration.itk_wrapper.register_pair(self.register_module, fixed_image, moving_image)
-
-        return phi
+        return phi_fixed_moving
 
 
 
