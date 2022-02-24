@@ -30,10 +30,12 @@ class AnalysisObject:
         )
 
         ## Initialize registerer
-        self.registerer = oai_analysis_2.registration.AVSM_Registration(
-            ckpoint_path=os.path.join(utils.get_data_dir(), "pre_trained_registration_model"),
-            config_path =os.path.join(utils.get_data_dir(), "avsm_settings")
-        )
+        #self.registerer = oai_analysis_2.registration.AVSM_Registration(
+        #    ckpoint_path=os.path.join(utils.get_data_dir(), "pre_trained_registration_model"),
+        #    config_path =os.path.join(utils.get_data_dir(), "avsm_settings")
+        #
+
+        self.registerer = oai_analysis_2.registration.ICON_Registration()
 
         ## Load Atlas
 
