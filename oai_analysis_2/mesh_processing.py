@@ -1,13 +1,15 @@
 '''
 Comprises various functions needed for mesh processing.
 For ex. mesh smoothing, face normal calculation, face centroid calculation, 
-mesh splitting, mesh thickness computation,
+mesh splitting, mesh thickness computation, mesh attributes mapping to atlas mesh,
 connected component analysis of mesh.
 
 Sample usage for thickness computation
     import mesh_processing as mp
     distance_inner, distance_outer = mp.get_thickness_mesh(itk_image, mesh_type=='FC')
 
+Sample usage for mapping attributes/data to atlas mesh (target mesh)
+    mapped_mesh = mp.map_attributes(source_mesh, target_mesh)
 '''
 
 import numpy as np
@@ -17,6 +19,9 @@ import vtk
 from vtk.util import numpy_support as ns
 from itkwidgets import view
 from skimage import measure
+from scipy.interpolate import griddata
+from sklearn.decomposition import PCA
+from sklearn.manifold import LocallyLinearEmbedding
 
 # Helper Functions for Mesh Processing
 
@@ -244,7 +249,8 @@ def split_femoral_cartilage_surface(mesh, face_normal, face_centroid, num_divisi
     outer_mesh = get_vtk_sub_mesh(mesh, outer_face_list)
 
     return inner_mesh, outer_mesh, inner_face_list, outer_face_list
-  
+
+# For smoothing the input mesh. Change number of iterations as per usecase.
 def smooth_mesh(input_mesh, num_iterations=150):
   smoothing_filter = vtk.vtkSmoothPolyDataFilter()
   smoothing_filter.SetNumberOfIterations(num_iterations)
@@ -255,7 +261,7 @@ def smooth_mesh(input_mesh, num_iterations=150):
   output_mesh = smoothing_filter.GetOutput()
   return output_mesh
 
-# For getting nearest neighbour distance between inner and outer mesh
+# For getting nearest neighbour distance between inner and outer mesh.
 def get_distance(inner_mesh, outer_mesh):
     distance_filter = vtk.vtkDistancePolyDataFilter()
     distance_filter.SetInputData(0, inner_mesh)
@@ -269,6 +275,7 @@ def get_distance(inner_mesh, outer_mesh):
 
     return distance_inner, distance_outer
 
+# Obtain the thickness of the input itk_image by creating a mesh and splitting it.
 def get_thickness_mesh(itk_image, mesh_type='FC'):
     '''
     Takes the probability map obtained from the segmentation algorithm as an itk image.
@@ -306,3 +313,70 @@ def get_thickness_mesh(itk_image, mesh_type='FC'):
     distance_inner, distance_outer = get_distance(inner_mesh, outer_mesh)
 
     return distance_inner, distance_outer
+
+# Map the attributes from the source mesh to target mesh (atlas mesh)
+# Gets the closest point to map the attribute
+def map_attributes(source_mesh, target_mesh):
+    interpolator = vtk.vtkPointInterpolator()
+    interpolator.SetNullPointsStrategyToClosestPoint()
+    interpolator.SetInputData(target_mesh)
+    interpolator.SetSourceData(source_mesh)
+    interpolator.Update()
+    mapped_mesh = interpolator.GetOutput()
+    return mapped_mesh
+
+# Run this once for the atlas mesh to obtain the mapping from 3D to 2D projection
+# Re-use the projection for consistent results.
+# Takes as arugment the number of points to fit.
+# Pass negative to use all points
+def create_atlas_projection(atlas_mesh, mesh_type='FC', num_of_points=2000):
+    points = np.array(atlas_mesh.GetPoints().GetData())
+
+    # use all points if num_of_points is negative
+    if num_of_points < 0:
+        num_of_points = points.shape[0]
+    
+    if mesh_type == 'FC':
+        embedding = LocallyLinearEmbedding(n_components=2,
+                            n_neighbors=10, 
+                            method='hessian',
+                            random_state=2)
+    else:
+        embedding = PCA(n_components=2, svd_solver ='randomized')
+
+    X_transformed = embedding.fit(points[np.random.choice(points.shape[0], size=num_of_points)])
+    X_transformed = embedding.transform(points)
+    return X_transformed
+
+# Projects the thickness in mapped mesh to 2D
+# Takes as arugment the projected points (embedded), if not given then re-uses the 
+# already transformed points in the atlas mesh for the given mesh type.
+def project_thickness(mapped_mesh, mesh_type='FC', min_thickness=0.3, embedded=None):
+    point_data = np.array(mapped_mesh.GetPointData().GetScalars())
+    
+    if embedded is None:
+        embedded = np.load(mesh_type+'_X_transformed.npy')
+
+    ninter = 100
+    thickness = point_data
+
+    xmin, xmax, ymin, ymax = min(embedded[:, 0]), max(embedded[:, 0]), min(embedded[:, 1]), max(embedded[:, 1])
+
+    rangex = xmax - xmin
+    rangey = ymax - ymin
+
+    embedded[:, 0] = embedded[:, 0] - xmin
+    embedded[:, 1] = embedded[:, 1] - ymin
+
+    embedded[:, 0] = embedded[:, 0]/rangex
+    embedded[:, 1] = embedded[:, 1]/rangey
+
+    thickness[thickness< min_thickness] = min_thickness
+
+    X, Y = np.meshgrid(np.arange(0, ninter, 1), np.arange(0, ninter, 1))
+
+    projected_thickness = griddata((embedded[:, 0], embedded[:, 1]), thickness, (X/100.0, Y/100.0))
+    projected_thickness = np.nan_to_num(projected_thickness)
+    projected_thickness[projected_thickness < min_thickness] = min_thickness
+
+    return projected_thickness
