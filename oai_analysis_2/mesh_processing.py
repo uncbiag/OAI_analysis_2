@@ -21,7 +21,6 @@ from itkwidgets import view
 from skimage import measure
 from scipy.interpolate import griddata
 from sklearn.decomposition import PCA
-from sklearn.manifold import LocallyLinearEmbedding
 
 # Helper Functions for Mesh Processing
 
@@ -275,13 +274,8 @@ def get_distance(inner_mesh, outer_mesh):
 
     return distance_inner, distance_outer
 
-# Obtain the thickness of the input itk_image by creating a mesh and splitting it.
-def get_thickness_mesh(itk_image, mesh_type='FC'):
-    '''
-    Takes the probability map obtained from the segmentation algorithm as an itk image.
-    Constructs a VTK mesh from it and returns the thickness between the inner and outer splitted mesh.
-    Takes as argument the type of mesh 'FC' or 'TC'.
-    '''
+# To obtain mesh and attributes from itk_image
+def get_mesh(itk_image, num_iterations=150):
     spacing = itk_image.GetSpacing()
     img_array = np.swapaxes(np.asarray(itk_image), 0, 2).astype(float)
     
@@ -294,8 +288,11 @@ def get_thickness_mesh(itk_image, mesh_type='FC'):
     mesh = get_vtk_mesh(verts, faces)
 
     # For smoothing the mesh surface to obtain gradually varying face normals
-    mesh = smooth_mesh(mesh)
-    
+    mesh = smooth_mesh(mesh, num_iterations=150)
+    return mesh
+
+# To obtain inner and outer mesh splits given the mesh type
+def split_mesh(mesh, mesh_type='FC'):
     # Obtain the cell normals and centroids to be used for splittig the cartilage
     mesh_cell_normals = get_cell_normals(mesh)
     mesh_cell_centroids = get_cell_centroid(mesh)
@@ -309,6 +306,22 @@ def get_thickness_mesh(itk_image, mesh_type='FC'):
         inner_mesh, outer_mesh, inner_face_list, outer_face_list = split_tibial_cartilage_surface(mesh,
                                                                                            mesh_cell_normals,
                                                                                            mesh_cell_centroids)
+
+    return inner_mesh, outer_mesh
+
+# Obtain the thickness of the input itk_image by creating a mesh and splitting it.
+def get_thickness_mesh(itk_image, mesh_type='FC', num_iterations=150):
+    '''
+    Takes the probability map obtained from the segmentation algorithm as an itk image.
+    Constructs a VTK mesh from it and returns the thickness between the inner and outer splitted mesh.
+    Takes as argument the type of mesh 'FC' or 'TC'.
+    '''
+    # Get mesh from itk image
+    mesh = get_mesh(itk_image, num_iterations=150)
+
+    # Split the mesh into inner and outer
+    inner_mesh, outer_mesh = split_mesh(mesh, mesh_type)
+
     # Get the distance between inner and outer mesh
     distance_inner, distance_outer = get_distance(inner_mesh, outer_mesh)
 
@@ -325,58 +338,118 @@ def map_attributes(source_mesh, target_mesh):
     mapped_mesh = interpolator.GetOutput()
     return mapped_mesh
 
-# Run this once for the atlas mesh to obtain the mapping from 3D to 2D projection
-# Re-use the projection for consistent results.
-# Takes as arugment the number of points to fit.
-# Pass negative to use all points
-def create_atlas_projection(atlas_mesh, mesh_type='FC', num_of_points=2000):
-    points = np.array(atlas_mesh.GetPoints().GetData())
+# For fitting a circle using given set of points
+def compute_least_square_circle(x, y):
+    method_2b = "leastsq with jacobian"
+    from scipy import optimize
 
-    # use all points if num_of_points is negative
-    if num_of_points < 0:
-        num_of_points = points.shape[0]
+    def calc_R(xc, yc):
+        """ calculate the distance of each data points from the center (xc, yc) """
+        return np.sqrt((x - xc) ** 2 + (y - yc) ** 2)
+
+    def f_2b(c):
+        """ calculate the algebraic distance between the 2D points and the mean circle centered at c=(xc, yc) """
+        Ri = calc_R(*c)
+        return Ri - Ri.mean()
+
+    def Df_2b(c):
+        """ Jacobian of f_2b
+        The axis corresponding to derivatives must be coherent with the col_deriv option of leastsq"""
+        xc, yc = c
+        df2b_dc = np.empty((len(c), x.size))
+
+        Ri = calc_R(xc, yc)
+        df2b_dc[0] = (xc - x) / Ri  # dR/dxc
+        df2b_dc[1] = (yc - y) / Ri  # dR/dyc
+        df2b_dc = df2b_dc - df2b_dc.mean(axis=1)[:, np.newaxis]
+
+        return df2b_dc
+
+    x_m = np.mean(x)
+    y_m = np.mean(y)
+    center_estimate = x_m, y_m
+    center_2b, ier = optimize.leastsq(f_2b, center_estimate, Dfun=Df_2b, col_deriv=True)
+
+    Ri_2b = calc_R(*center_2b)
+    R_2b = Ri_2b.mean()
+    return center_2b, R_2b
+
+# For getting the cylinder
+def get_cylinder(vertice):
+    x, y = vertice[:,0],vertice[:,1]
+    z_min, z_max = np.min(vertice[:,2]), np.max(vertice[:,2])
+    center, r =  compute_least_square_circle(x, y)
+    return (center,r), (z_min, z_max)
+
+# Project the vertices to the cylinder.
+def get_projection_from_circle_and_vertice(vertice, circle):
+    def equal_scale(input,ref):
+        input = (input - np.min(input))/(np.max(input)-np.min(input))
+        input = input*(np.max(ref)-np.min(ref))*1.5+np.min(ref)
+        return input
     
-    if mesh_type == 'FC':
-        embedding = LocallyLinearEmbedding(n_components=2,
-                            n_neighbors=10, 
-                            method='hessian',
-                            random_state=2)
-    else:
-        embedding = PCA(n_components=2, svd_solver ='randomized')
+    center, r =  circle
+    x, y = vertice[:,0],vertice[:,1]
+    radian = np.arctan2(y - center[1], x - center[0])
 
-    X_transformed = embedding.fit(points[np.random.choice(points.shape[0], size=num_of_points)])
-    X_transformed = embedding.transform(points)
-    return X_transformed
+    embedded = np.zeros([len(vertice), 2])
+    embedded[:, 0] = radian
+    embedded[:, 1] = vertice[:, 2]
+
+    plot_xy = np.zeros_like(embedded)
+    angle = radian / np.pi * 180
+    angle = equal_scale(angle, vertice[:, 2])
+    plot_xy[:, 0] = angle
+    plot_xy[:, 1] = vertice[:, 2]
+    return embedded, plot_xy
+
 
 # Projects the thickness in mapped mesh to 2D
 # Takes as arugment the projected points (embedded), if not given then re-uses the 
 # already transformed points in the atlas mesh for the given mesh type.
-def project_thickness(mapped_mesh, mesh_type='FC', min_thickness=0.3, embedded=None):
+def project_thickness(mapped_mesh, mesh_type='FC', embedded=None):
+    def do_linear_pca(vertice, dim=3.):
+        from sklearn.decomposition import KernelPCA
+        kpca = KernelPCA(n_components=2,degree=dim, n_jobs=None)
+        embedded = kpca.fit_transform(vertice)
+        return embedded
+
+    def rotate_embedded(embedded,angle):
+        theta = (angle / 180.) * np.pi
+        rotMatrix = np.array([[np.cos(theta), -np.sin(theta)],
+                              [np.sin(theta), np.cos(theta)]])
+        embedded = c = np.dot(embedded, rotMatrix)
+        return embedded
+
     point_data = np.array(mapped_mesh.GetPointData().GetScalars())
     
-    if embedded is None:
-        embedded = np.load(mesh_type+'_X_transformed.npy')
+    if mesh_type == 'FC':
+        vertices = np.array(mapped_mesh.GetPoints().GetData())
+        vertices[:, [1, 0]] = vertices[:, [0, 1]]
+        circle, z_range = get_cylinder(vertices)
+        embedded, plot_xy =  get_projection_from_circle_and_vertice(vertices, circle)
 
-    ninter = 100
-    thickness = point_data
+        return embedded[:, 0], embedded[:, 1], point_data
+    else:
+      vertice = np.array(mapped_mesh.GetPoints().GetData())
+      thickness = np.array(mapped_mesh.GetPointData().GetScalars())
 
-    xmin, xmax, ymin, ymax = min(embedded[:, 0]), max(embedded[:, 0]), min(embedded[:, 1]), max(embedded[:, 1])
+      vertice_left = vertice[vertice[:, 2] < 50]
+      index_left   = np.where(vertice[:, 2] < 50)[0]
 
-    rangex = xmax - xmin
-    rangey = ymax - ymin
+      vertice_right = vertice[vertice[:, 2] >= 50]
+      index_right   = np.where(vertice[:, 2] >= 50)[0]
 
-    embedded[:, 0] = embedded[:, 0] - xmin
-    embedded[:, 1] = embedded[:, 1] - ymin
+      embedded_left  = do_linear_pca(vertice_left)
+      embedded_right = do_linear_pca(vertice_right)
 
-    embedded[:, 0] = embedded[:, 0]/rangex
-    embedded[:, 1] = embedded[:, 1]/rangey
+      embedded_left  = rotate_embedded(embedded_left, -50)
+      embedded_right = rotate_embedded(embedded_right, -160)
 
-    thickness[thickness< min_thickness] = min_thickness
+      embedded_right[:,0] = - embedded_right[:,0] # flip x
 
-    X, Y = np.meshgrid(np.arange(0, ninter, 1), np.arange(0, ninter, 1))
-
-    projected_thickness = griddata((embedded[:, 0], embedded[:, 1]), thickness, (X/100.0, Y/100.0))
-    projected_thickness = np.nan_to_num(projected_thickness)
-    projected_thickness[projected_thickness < min_thickness] = min_thickness
-
-    return projected_thickness
+      combined_embedded_x = np.concatenate([embedded_right[:, 0], embedded_left[:, 0]]) 
+      combined_embedded_y = np.concatenate([embedded_right[:, 1]+50, embedded_left[:, 1]]) 
+      combined_thickness  = np.concatenate([thickness[index_right], thickness[index_left]])
+      
+      return combined_embedded_x, combined_embedded_y, combined_thickness
