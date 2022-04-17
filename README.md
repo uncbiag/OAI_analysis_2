@@ -2,10 +2,10 @@
 
 # OAI Analysis 2
 
-This repository contains open-source analysis approaches for the [Osteoarthritis Initiative (OAI)](https://nda.nih.gov/oai/) magnetic resonace image (MRI) data.
+This repository contains open-source analysis approaches for the [Osteoarthritis Initiative (OAI)](https://nda.nih.gov/oai/) magnetic resonance image (MRI) data.
 The analysis code is largely written in Python with the help of [ITK](itk.org) and [VTK](vtk.org) for data I/O and mesh processing
-as well as [PyTorch](pytorch.org) for the deep learning approaches for segmentation and registration. The intial development of this work
-was led by [UNC Chapel Hill](biag.cs.unc.edu) as well as [Kitware](kitware.com). This work is also an outgrowth of conversations within the
+as well as [PyTorch](http://pytorch.org) for the deep learning approaches for segmentation and registration. The intial development of this work
+was led by [UNC Chapel Hill](http://biag.cs.unc.edu) as well as [Kitware](http://kitware.com). This work is also an outgrowth of conversations within the
 [Community for Open and Reproducible Musculoskeletal Imaging Research (JC|MSK)](https://jcmsk.github.io/). Going forward, contributions by the 
 broader community are, of course, not only welcome but encouraged.
 
@@ -22,7 +22,7 @@ The following functionality is currently supported:
 
 The analysis approaches in this repository are based on our initial [OAI Analysis](https://github.com/uncbiag/OAI_analysis) work.
 Much of the functionality of the original code-base has been ported to the *OAI Analysis 2* repository. The main differences are
-1. **Refactoring**: A significant refactoring of the code so that it makes better use of [ITK](www.itk.org) conventions as well as [VTK](vtk.org) for all the mesh processing needs.
+1. **Refactoring**: A significant refactoring of the code so that it makes better use of [ITK](http://itk.org) conventions as well as [VTK](http://vtk.org) for all the mesh processing needs.
 2. **ICON registration**: We switched to the new [ICON](https://github.com/uncbiag/ICON) registration approach (see manuscripts below).
 3. **Data processing**: We improved the data processing by better handling of data objects. Whereas the previous *OAI Analysis* pipeline largely depended on reading and writing various different files, the *OAI Aanalysis 2* refactoring uses ITK and VTK objects.
 4. **Jupyter notebooks**: Better support of analysis in Jupyter notebooks.
