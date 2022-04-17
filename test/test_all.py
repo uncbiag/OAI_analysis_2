@@ -22,9 +22,7 @@ class TestOAIAnalysis(unittest.TestCase):
         download_test_data()
         self.analysis_object = oai_analysis_2.analysis_object.AnalysisObject()
 
-
-
-    def testSegmentation(self):
+    def test_SegmentationCPU(self):
         input_image = itk.imread(str(TEST_DATA_DIR / "colab_case/image_preprocessed.nii.gz"))
 
         correct_FC_segmentation = itk.imread(str(TEST_DATA_DIR / "colab_case/FC_probmap.nii.gz"))
@@ -32,13 +30,17 @@ class TestOAIAnalysis(unittest.TestCase):
         
         FC, TC = self.analysis_object.segment(input_image)
 
+        print('Segmentation Done')
+        print(FC.shape, TC.shape)
+        #np.save('FC_map.npy', FC)
+        #np.save('TC_map.npy', TC)
         #print(np.sum(itk.ComparisonImageFilter(FC, correct_FC_segmentation)))
         #print(np.sum(itk.ComparisonImageFilter(TC, correct_TC_segmentation)))
 
-        self.assertLess(np.sum(itk.ComparisonImageFilter(FC, correct_FC_segmentation)) , 12)
-        self.assertLess(np.sum(itk.ComparisonImageFilter(TC, correct_TC_segmentation)) , 12)
+        self.assertLess(np.sum(itk.comparison_image_filter(FC, correct_FC_segmentation)) , 12)
+        self.assertLess(np.sum(itk.comparison_image_filter(TC, correct_TC_segmentation)) , 12)
 
-    def testRegistration(self):
+    def test_RegistrationCPU(self):
         input_image = itk.imread(str(TEST_DATA_DIR / "colab_case/image_preprocessed.nii.gz"))
 
         correct_registration = itk.imread(str(TEST_DATA_DIR / "colab_case/avsm/inv_transform_to_atlas.nii.gz"))
@@ -51,13 +53,14 @@ class TestOAIAnalysis(unittest.TestCase):
 
 class TestImports(unittest.TestCase):
 
-    def testImportsCPU(self):
+    def test_ImportsCPU(self):
         self.analysis_object = oai_analysis_2.analysis_object.AnalysisObject()
 
 class TestICONRegistration(unittest.TestCase):
     def setUp(self):
         download_test_data()
-    def testRegistration(self):
+
+    def test_RegistrationCPU(self):
         ICON_obj = oai_analysis_2.registration.ICON_Registration()
 
         image_A = itk.imread(str(TEST_DATA_DIR / "colab_case/image_preprocessed.nii.gz"))
