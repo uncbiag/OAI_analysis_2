@@ -3,7 +3,7 @@
 # OAI Analysis 2
 
 This repository contains open-source analysis approaches for the [Osteoarthritis Initiative (OAI)](https://nda.nih.gov/oai/) magnetic resonance image (MRI) data.
-The analysis code is largely written in Python with the help of [ITK](itk.org) and [VTK](vtk.org) for data I/O and mesh processing
+The analysis code is largely written in Python with the help of [ITK](http://itk.org) and [VTK](http://vtk.org) for data I/O and mesh processing
 as well as [PyTorch](http://pytorch.org) for the deep learning approaches for segmentation and registration. The intial development of this work
 was led by [UNC Chapel Hill](http://biag.cs.unc.edu) as well as [Kitware](http://kitware.com). This work is also an outgrowth of conversations within the
 [Community for Open and Reproducible Musculoskeletal Imaging Research (JC|MSK)](https://jcmsk.github.io/). Going forward, contributions by the 
