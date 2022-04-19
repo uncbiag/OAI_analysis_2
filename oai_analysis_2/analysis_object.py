@@ -8,13 +8,13 @@ import os
 
 class AnalysisObject:
     def __init__(self):
-        if "cuda" in torch.testing.get_all_device_types():
+        if torch.cuda.is_available():
             self.device = "cuda"
         else:
             print("WARNING: CUDA NOT AVAILABLE, FALLING BACK TO CPU")
             self.device = "cpu"
-        ## Initialize segmenter
 
+        ## Initialize segmenter
         segmenter_config = dict(
             ckpoint_path=os.path.join(utils.get_data_dir(), "segmentation_model.pth.tar"),
             training_config_file=os.path.join(utils.get_data_dir()
@@ -38,8 +38,8 @@ class AnalysisObject:
         self.registerer = oai_analysis_2.registration.ICON_Registration()
 
         ## Load Atlas
-
         self.atlas_image = itk.imread(os.path.join(utils.get_data_dir(), "atlas_60_LEFT_baseline_NMI/atlas_image.nii.gz"))
+
     def segment(self, preprocessed_image):
         FC_probmap, TC_probmap = self.segmenter.segment(preprocessed_image, if_output_prob_map=True, if_output_itk=True)
         return (FC_probmap, TC_probmap)
