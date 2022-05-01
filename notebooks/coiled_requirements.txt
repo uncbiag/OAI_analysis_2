@@ -1,0 +1,12 @@
+itk==5.3rc4
+vtk
+itkwidgets
+icon-registration==0.3.4
+pip install tornado==6.1
+coiled
+torch
+jupyter
+girder_client
+git+https://github.com/uncbiag/mermaid.git
+git+https://github.com/uncbiag/easyreg.git
+git+https://github.com/PranjalSahu/OAI_analysis_2.git#egg=oai_package
