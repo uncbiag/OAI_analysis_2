@@ -45,16 +45,9 @@ def register_images_delayed():
 
 
 @delayed
-def deform_probmap_delayed(phi_AB, image_A, image_B, image_type ='FC'):
+def deform_probmap_delayed(phi_AB, image_A, image_B, prob_map, image_type ='FC'):
     import itk
     import boto3
-
-    if 1:
-        s3          = boto3.resource("s3")
-        bucket_name = 'oaisample1'
-        bucket      = s3.Bucket(bucket_name)
-        fc_prob_file = str(image_type)+'_probmap.nii.gz'
-        s3.Bucket(bucket_name).download_file(fc_prob_file, fc_prob_file)
 
     phi_AB1  = itk.transform_from_dict(phi_AB)
     
@@ -79,12 +72,10 @@ def deform_probmap_delayed(phi_AB, image_A, image_B, image_type ='FC'):
     set_parameters(phi_AB, phi_AB1)
     image_A = itk.image_from_dict(image_A)
     image_B = itk.image_from_dict(image_B)
+    prob    = itk.image_from_dict(prob_map)
 
     interpolator = itk.LinearInterpolateImageFunction.New(image_A)
     
-    prob_file = str(image_type)+'_probmap.nii.gz'
-    prob = itk.imread(prob_file, itk.D)
-
     warped_image = itk.resample_image_filter(prob, 
        transform=phi_AB1, 
        interpolator=interpolator,
@@ -150,7 +141,7 @@ def segment_image_delayed():
     from os.path import exists
     import boto3
     import itk
-    import oai_analysis_2
+    from oai_analysis_2 import analysis_object as ao
 
     image_A = 'image_preprocessed.nii.gz'
     if exists(image_A) ==  False:
@@ -160,7 +151,7 @@ def segment_image_delayed():
         s3.Bucket(bucket_name).download_file(image_A, image_A)
 
     test_volume = itk.imread(image_A)
-    obj = oai_analysis_2.AnalysisObject()
+    obj = ao.AnalysisObject()
     FC_prob, TC_prob = obj.segment(test_volume)
 
     return itk.dict_from_image(FC_prob), itk.dict_from_image(TC_prob)
