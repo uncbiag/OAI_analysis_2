@@ -2,7 +2,7 @@ itk==5.3rc4
 vtk
 itkwidgets
 icon-registration==0.3.4
-pip install tornado==6.1
+tornado==6.1
 coiled
 torch
 jupyter
