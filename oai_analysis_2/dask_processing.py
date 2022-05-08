@@ -21,7 +21,8 @@ def register_images_delayed():
     import icon_registration.itk_wrapper as itk_wrapper
     import icon_registration.pretrained_models as pretrained_models
     from os.path import exists
-
+    import torch
+    torch.set_num_threads(8)
     
     image_A = 'image_preprocessed.nii.gz'
     image_B = 'atlas_image.nii.gz'
@@ -45,9 +46,16 @@ def register_images_delayed():
 
 
 @delayed
-def deform_probmap_delayed(phi_AB, image_A, image_B, prob_map, image_type ='FC'):
+def deform_probmap_delayed(phi_AB, image_A, image_B, image_type ='FC'):
     import itk
     import boto3
+
+    s3          = boto3.resource("s3")
+    bucket_name = 'oaisample1'
+    bucket      = s3.Bucket(bucket_name)
+    prob_file = str(image_type)+'_probmap.nii.gz'
+    s3.Bucket(bucket_name).download_file(prob_file, prob_file)
+    prob = itk.imread(prob_file, itk.D)
 
     phi_AB1  = itk.transform_from_dict(phi_AB)
     
@@ -72,7 +80,6 @@ def deform_probmap_delayed(phi_AB, image_A, image_B, prob_map, image_type ='FC')
     set_parameters(phi_AB, phi_AB1)
     image_A = itk.image_from_dict(image_A)
     image_B = itk.image_from_dict(image_B)
-    prob    = itk.image_from_dict(prob_map)
 
     interpolator = itk.LinearInterpolateImageFunction.New(image_A)
     
@@ -142,6 +149,8 @@ def segment_image_delayed():
     import boto3
     import itk
     from oai_analysis_2 import analysis_object as ao
+    import torch
+    torch.set_num_threads(8)
 
     image_A = 'image_preprocessed.nii.gz'
     if exists(image_A) ==  False:
