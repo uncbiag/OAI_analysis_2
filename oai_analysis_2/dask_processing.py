@@ -1,12 +1,10 @@
 # All Imports
 
 import numpy as np
-
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]=""
+#os.environ["CUDA_VISIBLE_DEVICES"]=""
 
 
-import coiled
 import dask
 from dask import delayed, compute, visualize
 from dask.distributed import Client, progress, LocalCluster
@@ -14,7 +12,7 @@ from dask.distributed import Client, progress, LocalCluster
 
 
 @delayed(nout=3)
-def register_images_delayed():
+def register_images_delayed(image_A, image_B):
     import boto3
     import itk
     import icon_registration
@@ -22,23 +20,28 @@ def register_images_delayed():
     import icon_registration.pretrained_models as pretrained_models
     from os.path import exists
     import torch
+    import time
     torch.set_num_threads(8)
     
-    image_A = 'image_preprocessed.nii.gz'
-    image_B = 'atlas_image.nii.gz'
-    if (exists(image_A) and exists(image_B)) == False:
-        s3          = boto3.resource("s3")
-        bucket_name = 'oaisample1'
-        bucket      = s3.Bucket(bucket_name)
-
-        s3.Bucket(bucket_name).download_file(image_A, image_A)
-        s3.Bucket(bucket_name).download_file(image_B, image_B)
+    # Create temporary file names to download
+    image_A_filename = str(int(time.time()))+'_image_preprocessed.nii.gz'
+    image_B_filename = str(int(time.time()))+'_atlas_image.nii.gz'
     
-    image_A = itk.imread(image_A, itk.D)
-    image_B = itk.imread(image_B, itk.D)
+    s3          = boto3.resource("s3")
+    bucket_name = 'oaisample1'
+    bucket      = s3.Bucket(bucket_name)
+
+    s3.Bucket(bucket_name).download_file(image_A, image_A_filename)
+    s3.Bucket(bucket_name).download_file(image_B, image_B_filename)
+    
+    image_A = itk.imread(image_A_filename, itk.D)
+    image_B = itk.imread(image_B_filename, itk.D)
 
     model = pretrained_models.OAI_knees_gradICON_model()
-    model.to('cpu')
+    if torch.cuda.is_available():
+        model.cuda()
+    else:
+        model.to('cpu')
 
     # Register the images
     phi_AB, phi_BA = itk_wrapper.register_pair(model, image_A, image_B)
@@ -46,31 +49,23 @@ def register_images_delayed():
 
 
 @delayed
-def deform_probmap_delayed(phi_AB, image_A, image_B, image_type ='FC'):
+def deform_probmap_delayed(phi_AB, image_A, image_B, prob, image_type='FC'):
     import itk
-    import boto3
 
-    s3          = boto3.resource("s3")
-    bucket_name = 'oaisample1'
-    bucket      = s3.Bucket(bucket_name)
-    prob_file = str(image_type)+'_probmap.nii.gz'
-    s3.Bucket(bucket_name).download_file(prob_file, prob_file)
-    prob = itk.imread(prob_file, itk.D)
+    phi_AB1 = itk.transform_from_dict(phi_AB)
 
-    phi_AB1  = itk.transform_from_dict(phi_AB)
-    
     def set_parameters(phi_AB, phi_AB1):
-        for i in range(len(phi_AB)-1):
+        for i in range(len(phi_AB) - 1):
             transform1 = phi_AB1.GetNthTransform(i)
 
-            fp = phi_AB[i+1]['fixedParameters']
+            fp = phi_AB[i + 1]['fixedParameters']
             o1 = transform1.GetFixedParameters()
             o1.SetSize(fp.shape[0])
             for j, v in enumerate(fp):
                 o1.SetElement(j, v)
             transform1.SetFixedParameters(o1)
 
-            p = phi_AB[i+1]['parameters']
+            p = phi_AB[i + 1]['parameters']
             o2 = transform1.GetParameters()
             o2.SetSize(p.shape[0])
             for j, v in enumerate(p):
@@ -82,15 +77,17 @@ def deform_probmap_delayed(phi_AB, image_A, image_B, image_type ='FC'):
     image_B = itk.image_from_dict(image_B)
 
     interpolator = itk.LinearInterpolateImageFunction.New(image_A)
-    
-    warped_image = itk.resample_image_filter(prob, 
-       transform=phi_AB1, 
-       interpolator=interpolator,
-       size=itk.size(image_B),
-       output_spacing=itk.spacing(image_B),
-       output_direction=image_B.GetDirection(),
-       output_origin=image_B.GetOrigin()
-    )
+
+    prob = itk.image_from_dict(prob)
+
+    warped_image = itk.resample_image_filter(
+        prob,
+        transform=phi_AB1,
+        interpolator=interpolator,
+        size=itk.size(image_B),
+        output_spacing=itk.spacing(image_B),
+        output_direction=image_B.GetDirection(),
+        output_origin=image_B.GetOrigin())
 
     output_dict = itk.dict_from_image(warped_image)
     return output_dict
@@ -143,24 +140,52 @@ def get_thickness(warped_image, mesh_type):
 
     return distance_inner_itk_dict
 
+
 @delayed(nout=2)
-def segment_image_delayed():
+def segment_method(image_A):
+    import oai_analysis_2
+    import torch
+    import os
     from os.path import exists
+    from oai_analysis_2 import utils
+    from oai_analysis_2.segmentation import segmenter
     import boto3
     import itk
-    from oai_analysis_2 import analysis_object as ao
-    import torch
-    torch.set_num_threads(8)
+    import time
 
-    image_A = 'image_preprocessed.nii.gz'
-    if exists(image_A) ==  False:
-        s3          = boto3.resource("s3")
-        bucket_name = 'oaisample1'
-        bucket      = s3.Bucket(bucket_name)
-        s3.Bucket(bucket_name).download_file(image_A, image_A)
+    if torch.cuda.is_available():
+        device = "cuda"
+    else:
+        print("WARNING: CUDA NOT AVAILABLE, FALLING BACK TO CPU")
+        device = "cpu"
 
-    test_volume = itk.imread(image_A)
-    obj = ao.AnalysisObject()
-    FC_prob, TC_prob = obj.segment(test_volume)
+    # Initialize segmenter
+    segmenter_config = dict(
+        ckpoint_path=os.path.join(utils.get_data_dir(),
+                                  "segmentation_model.pth.tar"),
+        training_config_file=os.path.join(utils.get_data_dir(),
+                                          "segmentation_train_config.pth.tar"),
+        device=device,
+        batch_size=4,
+        overlap_size=(16, 16, 8),
+        output_prob=True,
+        output_itk=True,
+    )
 
-    return itk.dict_from_image(FC_prob), itk.dict_from_image(TC_prob)
+    segmenter = oai_analysis_2.segmentation.segmenter.Segmenter3DInPatchClassWise(
+        mode="pred", config=segmenter_config)
+
+    # Download image
+    image_A_filename = str(int(time.time()))+'_image_preprocessed.nii.gz'
+    s3 = boto3.resource("s3")
+    bucket_name = 'oaisample1'
+    bucket = s3.Bucket(bucket_name)
+    s3.Bucket(bucket_name).download_file(image_A, image_A_filename)
+
+    # Segment downloaded image
+    test_volume = itk.imread(image_A_filename, itk.F)
+    FC_probmap, TC_probmap = segmenter.segment(test_volume,
+                                               if_output_prob_map=True,
+                                               if_output_itk=True)
+
+    return itk.dict_from_image(FC_probmap), itk.dict_from_image(TC_probmap)
