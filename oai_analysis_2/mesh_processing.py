@@ -58,6 +58,41 @@ def get_cell_normals(vtk_mesh):
     
     return d1
 
+# Convert from VTK Mesh to ITK Mesh to make it serializable
+def get_itk_mesh(vtk_mesh):
+    Dimension = 3
+    PixelType = itk.D
+    
+    MeshType = itk.Mesh[PixelType, Dimension]
+    itk_mesh = MeshType.New()
+    
+    # Get points array from VTK mesh
+    points = vtk_mesh.GetPoints().GetData()
+    points_numpy = np.array(points).flatten().astype('float32')
+        
+    polys = vtk_mesh.GetPolys().GetData()
+    polys_numpy = np.array(polys).flatten()
+
+    # Triangle Mesh
+    vtk_cells_count = vtk_mesh.GetNumberOfPolys()
+    polys_numpy = np.reshape(polys_numpy, [vtk_cells_count, Dimension+1])
+
+    # Extracting only the points by removing first column that denotes the VTK cell type
+    polys_numpy = polys_numpy[:, 1:]
+    polys_numpy = polys_numpy.flatten().astype(np.uint64)
+
+    # Get point data from VTK mesh to insert in ITK Mesh
+    point_data_numpy = np.array(vtk_mesh.GetPointData().GetScalars())#.astype('float64')
+    
+    # Get cell data from VTK mesh to insert in ITK Mesh
+    cell_data_numpy = np.array(vtk_mesh.GetCellData().GetScalars())#.astype('float64')
+    
+    itk_mesh.SetPoints(itk.vector_container_from_array(points_numpy))
+    itk_mesh.SetCellsArray(itk.vector_container_from_array(polys_numpy), itk.CommonEnums.CellGeometry_TRIANGLE_CELL)
+    itk_mesh.SetPointData(itk.vector_container_from_array(point_data_numpy))
+    itk_mesh.SetCellData(itk.vector_container_from_array(cell_data_numpy))    
+    return itk_mesh
+
 # Get VTK mesh using vertices and faces array
 def get_vtk_mesh(verts, faces):
     cells = vtk.vtkCellArray()
