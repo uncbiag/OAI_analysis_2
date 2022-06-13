@@ -3,6 +3,6 @@ jupyter
 itk
 itkwidgets
 girder_client
-icon_registration
+icon_registration==0.3.4
 git+https://github.com/uncbiag/mermaid.git
 git+https://github.com/uncbiag/easyreg.git
