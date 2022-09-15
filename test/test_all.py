@@ -5,10 +5,10 @@ import sys
 import pathlib
 
 import itk
-
+import vtk
 import oai_analysis_2.analysis_object
 import oai_analysis_2.registration
-
+from oai_analysis_2 import mesh_processing as mp
 import numpy as np
 
 TEST_DATA_DIR = pathlib.Path(__file__).parent / "test_files"
@@ -40,6 +40,43 @@ class TestOAIAnalysis(unittest.TestCase):
         self.assertLess(np.sum(itk.comparison_image_filter(FC, correct_FC_segmentation)) , 12)
         self.assertLess(np.sum(itk.comparison_image_filter(TC, correct_TC_segmentation)) , 12)
 
+    def test_MeshThicknessCPU(self):
+        input_image = itk.imread(str(TEST_DATA_DIR / "colab_case/image_preprocessed.nii.gz"), itk.D)
+        atlas_image = self.analysis_object.atlas_image
+
+        correct_FC_segmentation = itk.imread(str(TEST_DATA_DIR / "colab_case/FC_probmap.nii.gz"), itk.D)
+        correct_TC_segmentation = itk.imread(str(TEST_DATA_DIR / "colab_case/TC_probmap.nii.gz"), itk.D)
+        
+        def deform_probmap(phi_AB, image_A, image_B, prob_map):
+            interpolator = itk.LinearInterpolateImageFunction.New(image_A)
+            warped_image = itk.resample_image_filter(prob_map, 
+                transform=phi_AB, 
+                interpolator=interpolator,
+                size=itk.size(image_B),
+                output_spacing=itk.spacing(image_B),
+                output_direction=image_B.GetDirection(),
+                output_origin=image_B.GetOrigin()
+            )
+            return warped_image
+
+        phi_AB = self.analysis_object.register(input_image)
+        
+        warped_image_FC = deform_probmap(phi_AB, input_image, atlas_image, correct_FC_segmentation)
+        warped_image_TC = deform_probmap(phi_AB, input_image, atlas_image, correct_TC_segmentation)
+
+        distance_inner_FC, _ = mp.get_thickness_mesh(warped_image_FC, mesh_type='FC')
+        distance_inner_FC = mp.get_itk_mesh(distance_inner_FC)
+        print(distance_inner_FC)
+
+        distance_inner_TC, _ = mp.get_thickness_mesh(warped_image_TC, mesh_type='TC')
+        distance_inner_TC = mp.get_itk_mesh(distance_inner_TC)
+        print(distance_inner_TC)
+
+        print("Thickness computation completed")
+
+        assert(64800 <= distance_inner_FC.GetNumberOfPoints() <= 65000)
+        assert(20460 <= distance_inner_TC.GetNumberOfPoints() <= 20480)
+    
     def test_RegistrationCPU(self):
         input_image = itk.imread(str(TEST_DATA_DIR / "colab_case/image_preprocessed.nii.gz"))
 
