@@ -46,6 +46,7 @@ def readimage(image_path):
 @delayed(nout=3)
 def register_images_delayed(image_A, image_B):
     import itk
+    from itk import Image as itkImage
     from itk import CastImageFilter as CastImageFilter
     import icon_registration
     import icon_registration.itk_wrapper as itk_wrapper
@@ -59,13 +60,13 @@ def register_images_delayed(image_A, image_B):
     image_A = readimage(image_A)
     image_B = readimage(image_B)
 
-    cast_filter_type = CastImageFilter[type(image_A), itk.Image[itk.D, 3]].New()
+    cast_filter_type = CastImageFilter[type(image_A), itkImage[itk.D, 3]].New()
     cast_filter_type.SetInPlace(False)
     cast_filter_type.SetInput(image_A)
     cast_filter_type.Update()
     image_A = cast_filter_type.GetOutput()
 
-    cast_filter_type = CastImageFilter[type(image_B), itk.Image[itk.D, 3]].New()
+    cast_filter_type = CastImageFilter[type(image_B), itkImage[itk.D, 3]].New()
     cast_filter_type.SetInPlace(False)
     cast_filter_type.SetInput(image_B)
     cast_filter_type.Update()
@@ -116,7 +117,6 @@ def get_thickness(warped_image, mesh_type):
     import numpy as np
     from oai_analysis_2 import mesh_processing as mp
 
-    warped_image = itk.image_from_dict(warped_image)
     distance_inner, _ = mp.get_thickness_mesh(warped_image, mesh_type=mesh_type)
     distance_inner_itk = mp.get_itk_mesh(distance_inner)
     return distance_inner_itk
