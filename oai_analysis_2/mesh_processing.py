@@ -103,17 +103,11 @@ def get_itk_mesh(vtk_mesh):
 
 # Get VTK mesh using vertices and faces array
 def get_vtk_mesh(verts, faces):
-    cells = vtk.vtkCellArray()
-
     # Add Cells
-    for i in range(0, faces.shape[0]):
-        tri = vtk.vtkTriangle()
-        current_cell_points = faces[i]
-
-        for i in range(3):
-            point_id = current_cell_points[i]
-            tri.GetPointIds().SetId(i, point_id)
-        cells.InsertNextCell(tri)
+    cells = vtk.vtkCellArray()
+    offsets = np.arange(0, faces.shape[0]*3 + 1, 3).astype('int')
+    connectivity = faces.flatten().astype('int')
+    cells.SetData(ns.numpy_to_vtk(offsets), ns.numpy_to_vtk(connectivity))
 
     # Create a poly data object
     vtk_mesh = vtk.vtkPolyData()
@@ -130,7 +124,6 @@ def get_vtk_mesh(verts, faces):
     connectivityFilter.SetExtractionModeToAllRegions()
     connectivityFilter.Update()
 
-    valid_meshes = []
     append_polydata = vtk.vtkAppendPolyData()
 
     # Filter out small regions
