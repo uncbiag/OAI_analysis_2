@@ -1,6 +1,7 @@
 torch
 jupyter
 itk==5.3.0
+vtk
 itkwidgets
 girder_client
 icon_registration==1.1.1
