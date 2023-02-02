@@ -1,0 +1,19 @@
+name: oai-analysis-2
+channels:
+  - rapidsai
+  - conda-forge
+  - default
+dependencies:
+  - python=3.8
+  - pytorch-gpu
+  - pip
+  - pip:
+    - itk==5.3.0
+    - coiled-runtime
+    - vtk
+    - itkwidgets
+    - icon_registration==0.3.4
+    - git+https://github.com/thewtex/mermaid.git
+    - git+https://github.com/thewtex/easyreg.git
+    - git+https://github.com/thewtex/OAI_analysis_2.git@coiled-consistent-environment
+    - girder_client

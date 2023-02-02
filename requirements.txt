@@ -1,9 +1,0 @@
-torch
-jupyter
-itk==5.3rc4
-vtk
-itkwidgets
-girder_client
-icon_registration==0.3.4
-git+https://github.com/uncbiag/mermaid.git
-git+https://github.com/uncbiag/easyreg.git
