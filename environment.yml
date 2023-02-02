@@ -7,7 +7,6 @@ dependencies:
   - python=3.8
   - pytorch-gpu
   - pip
-  - git
   - pip:
     - itk==5.3.0
     - coiled-runtime
