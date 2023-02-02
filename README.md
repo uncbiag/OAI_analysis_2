@@ -38,7 +38,10 @@ We are currently working on the following features which should be available in 
 ```
 git clone https://github.com/uncbiag/oai_analysis_2
 cd oai_analysis_2
-pip install -r requirements.txt
+mamba env create --file environment.yml
+conda activate oai-analysis-2
+# todo: need to test this
+pip install -e .
 python -m unittest -v discover
 ```
 
@@ -51,6 +54,16 @@ jupyter notebook
 ```
 
 upload test data to https://data.kitware.com/#collection/6205586c4acac99f42957ac3/folder/620559344acac99f42957d63
+
+### Distributed computation in the Cloud
+
+```sh
+mamba env create --file environment.yml
+conda activate oai-analysis-2
+./create_coiled_environment.py
+jupyter lab ./notebooks/DaskComputationCoiled.ipynb
+```
+
 
 ### Related manuscripts
 
