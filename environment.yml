@@ -16,5 +16,5 @@ dependencies:
     - icon_registration==0.3.4
     - git+https://github.com/thewtex/mermaid.git
     - git+https://github.com/uncbiag/easyreg.git
-    - git+https://github.com/uncbiag/OAI_analysis_2.git
+    - git+https://github.com/thewtex/OAI_analysis_2.git@coiled-consistent-environment
     - girder_client
