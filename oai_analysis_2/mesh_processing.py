@@ -326,7 +326,7 @@ def get_distance(inner_mesh, outer_mesh):
 
 # To obtain mesh and attributes from itk_image
 def get_mesh(itk_image, num_iterations=150):
-    import skimage
+    import skimage.measure
 
     spacing = itk_image.GetSpacing()
     img_array = np.swapaxes(np.asarray(itk_image), 0, 2).astype(float)
