@@ -1,6 +1,6 @@
 torch
 jupyter
-itk==5.3rc4
+itk==5.3
 vtk
 itkwidgets
 girder_client
