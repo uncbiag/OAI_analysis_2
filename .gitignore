@@ -2,4 +2,5 @@
 **/.ipynb_checkpoints/*
 test/test_files/*
 **/*.swp
-pretrained_OAI_model
+.DS_Store
+.idea
