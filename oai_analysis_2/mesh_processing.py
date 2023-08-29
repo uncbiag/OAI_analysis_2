@@ -15,25 +15,25 @@ Sample usage for mapping attributes/data to atlas mesh (target mesh)
 import numpy as np
 from sklearn.cluster import KMeans
 import itk
+import trimesh
 import vtk
 from vtk.util import numpy_support as ns
-from scipy.interpolate import griddata
 from sklearn.decomposition import PCA
 
 # Helper Functions for Mesh Processing
 
 # Get Centroid of all the cells
-def get_cell_centroid(vtk_mesh):
-    centroid_array = np.zeros([vtk_mesh.GetNumberOfCells(), 3])
-    num_of_cells = vtk_mesh.GetNumberOfCells()
+def get_cell_centroid(mesh: itk.Mesh):
+    mesh = get_trimesh(mesh)
+    centroid_array = np.zeros([len(mesh.faces), 3])
+    num_of_cells = len(mesh.faces)
 
     points_array = np.zeros([num_of_cells, 3, 3])
 
     for i in range(num_of_cells):
-        c = vtk_mesh.GetCell(i)
-        p = c.GetPoints()
-        p1 = np.array(p.GetData())
-        points_array[i] = p1
+        c = mesh.faces[i]
+        p = [mesh.vertices[c[0]], mesh.vertices[c[1]], mesh.vertices[c[2]]]
+        points_array[i] = p
 
     sum_array = np.sum(points_array, axis=1)
     centroid_array = sum_array / 3.0
@@ -41,21 +41,17 @@ def get_cell_centroid(vtk_mesh):
 
 
 # Get Normal of all the cells
-def get_cell_normals(vtk_mesh):
-    # Get Normals for the cells of the mesh
-    normals_filter = vtk.vtkPolyDataNormals()
-    normals_filter.SetInputData(vtk_mesh)
-    normals_filter.ComputePointNormalsOn()
-    normals_filter.ComputeCellNormalsOn()
-    normals_filter.SplittingOff()
-    normals_filter.ConsistencyOn()
-    normals_filter.AutoOrientNormalsOff()
-    normals_filter.Update()
+def get_cell_normals(mesh: itk.Mesh):
+    mesh = get_trimesh(mesh)
+    return mesh.face_normals
 
-    output1 = normals_filter.GetOutput()
-    d1 = np.array(output1.GetCellData().GetNormals())
-
-    return d1
+# Convert from ITK Mesh to Trimesh
+def get_trimesh(itk_mesh):
+    d = itk.dict_from_mesh(itk_mesh)
+    faces = d['cells'].reshape((len(d['cells'])//5,5))[:,2:]
+    vertices = d['points'].reshape((len(d['points'])//3, 3))
+    mesh = trimesh.Trimesh(vertices=vertices, faces=faces)
+    return mesh
 
 
 # Convert from VTK Mesh to ITK Mesh to make it serializable
@@ -96,8 +92,9 @@ def get_itk_mesh(vtk_mesh):
         itk.vector_container_from_array(polys_numpy),
         itk.CommonEnums.CellGeometry_TRIANGLE_CELL,
     )
-    itk_mesh.SetPointData(itk.vector_container_from_array(point_data_numpy))
-    itk_mesh.SetCellData(itk.vector_container_from_array(cell_data_numpy))
+    if point_data_numpy.dtype == np.float64:
+        itk_mesh.SetPointData(itk.vector_container_from_array(point_data_numpy))
+        itk_mesh.SetCellData(itk.vector_container_from_array(cell_data_numpy))
     return itk_mesh
 
 
@@ -346,8 +343,9 @@ def get_mesh(itk_image, num_iterations=150):
 # To obtain inner and outer mesh splits given the mesh type
 def split_mesh(mesh, mesh_type="FC"):
     # Obtain the cell normals and centroids to be used for splittig the cartilage
-    mesh_cell_normals = get_cell_normals(mesh)
-    mesh_cell_centroids = get_cell_centroid(mesh)
+    itk_mesh = get_itk_mesh(mesh)
+    mesh_cell_normals = get_cell_normals(itk_mesh)
+    mesh_cell_centroids = get_cell_centroid(itk_mesh)
 
     # Split the mesh
     if mesh_type == "FC":
