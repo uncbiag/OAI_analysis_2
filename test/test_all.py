@@ -27,7 +27,7 @@ class TestOAIAnalysis(unittest.TestCase):
 
         correct_FC_segmentation = itk.imread(str(TEST_DATA_DIR / "colab_case/FC_probmap.nii.gz"))
         correct_TC_segmentation = itk.imread(str(TEST_DATA_DIR / "colab_case/TC_probmap.nii.gz"))
-        
+
         FC, TC = self.analysis_object.segment(input_image)
 
         print('Segmentation Done')
@@ -46,7 +46,7 @@ class TestOAIAnalysis(unittest.TestCase):
 
         correct_FC_segmentation = itk.imread(str(TEST_DATA_DIR / "colab_case/FC_probmap.nii.gz"), itk.D)
         correct_TC_segmentation = itk.imread(str(TEST_DATA_DIR / "colab_case/TC_probmap.nii.gz"), itk.D)
-        
+
         def deform_probmap(phi_AB, image_A, image_B, prob_map):
             interpolator = itk.LinearInterpolateImageFunction.New(image_A)
             warped_image = itk.resample_image_filter(prob_map, 
@@ -60,7 +60,7 @@ class TestOAIAnalysis(unittest.TestCase):
             return warped_image
 
         phi_AB = self.analysis_object.register(input_image)
-        
+
         warped_image_FC = deform_probmap(phi_AB, input_image, atlas_image, correct_FC_segmentation)
         warped_image_TC = deform_probmap(phi_AB, input_image, atlas_image, correct_TC_segmentation)
 
@@ -76,14 +76,14 @@ class TestOAIAnalysis(unittest.TestCase):
 
         assert(64800 <= distance_inner_FC.GetNumberOfPoints() <= 65000)
         assert(20460 <= distance_inner_TC.GetNumberOfPoints() <= 20480)
-    
+
     def test_RegistrationCPU(self):
         input_image = itk.imread(str(TEST_DATA_DIR / "colab_case/image_preprocessed.nii.gz"))
 
         correct_registration = itk.imread(str(TEST_DATA_DIR / "colab_case/avsm/inv_transform_to_atlas.nii.gz"))
 
         registration = self.analysis_object.register(input_image)
-        
+
         #registration object is an itk transform. Need to verify that it is correct in test, but it appears correct
         print(registration)
         #self.assertFalse(np.sum(itk.ComparisonImageFilter(registration, correct_registration)) > 1)
@@ -107,7 +107,3 @@ class TestICONRegistration(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-
-        
-

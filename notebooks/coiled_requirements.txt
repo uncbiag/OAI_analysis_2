@@ -1,4 +1,4 @@
-itk==5.3rc4
+itk==5.3
 vtk
 itkwidgets
 icon-registration==0.3.4
@@ -8,5 +8,4 @@ torch
 jupyter
 girder_client
 git+https://github.com/uncbiag/mermaid.git
-git+https://github.com/uncbiag/easyreg.git
 git+https://github.com/PranjalSahu/OAI_analysis_2.git#egg=oai_package
