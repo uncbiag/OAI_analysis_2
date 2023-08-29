@@ -8,7 +8,7 @@ import numpy as np
 
 from .image_transforms import Partition
 from .utils import initialize_model
-from mermaid.module_parameters import ParameterDict
+from .module_parameters import ParameterDict
 from .networks import get_network
 
 def load_json_to_dict(json_file):

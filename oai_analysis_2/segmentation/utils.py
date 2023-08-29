@@ -4,10 +4,8 @@ Created by zhenlinx on 1/20/19
 """
 import os
 import sys
-import shutil
 
 import torch
-
 
 def initialize_model(model, optimizer=None, ckpoint_path=None):
     """
