@@ -16,7 +16,7 @@ jobs:
         python-version: 3.8
     - name: Install dependencies
       run: |
-        pip install -r requirements.txt
+        pip install -r requirements.txt pytest
     - name: Test with unittest
       run: |
         python -m unittest -k CPU
