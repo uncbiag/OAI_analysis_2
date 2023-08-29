@@ -5,7 +5,6 @@ import sys
 import pathlib
 
 import itk
-import vtk
 import oai_analysis_2.analysis_object
 import oai_analysis_2.registration
 from oai_analysis_2 import mesh_processing as mp
@@ -49,8 +48,8 @@ class TestOAIAnalysis(unittest.TestCase):
 
         def deform_probmap(phi_AB, image_A, image_B, prob_map):
             interpolator = itk.LinearInterpolateImageFunction.New(image_A)
-            warped_image = itk.resample_image_filter(prob_map, 
-                transform=phi_AB, 
+            warped_image = itk.resample_image_filter(prob_map,
+                transform=phi_AB,
                 interpolator=interpolator,
                 size=itk.size(image_B),
                 output_spacing=itk.spacing(image_B),
