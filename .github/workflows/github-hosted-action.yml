@@ -9,14 +9,16 @@ jobs:
       max-parallel: 5
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
+
     - name: Set up Python 3.8
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v3
       with:
         python-version: 3.8
     - name: Install dependencies
       run: |
-        pip install -r requirements.txt pytest
-    - name: Test with unittest
+        pip install -e .
+        pip install pytest
+    - name: Test with pytest
       run: |
-        python -m unittest -k CPU
+        pytest

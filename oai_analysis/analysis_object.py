@@ -1,8 +1,8 @@
 import itk
 import torch
-from oai_analysis_2 import utils
-import oai_analysis_2.segmentation.segmenter
-import oai_analysis_2.registration
+from oai_analysis import utils
+import oai_analysis.segmentation.segmenter
+import oai_analysis.registration
 
 import os
 
@@ -25,17 +25,17 @@ class AnalysisObject:
             output_prob=True,
             output_itk=True,
         )
-        self.segmenter = oai_analysis_2.segmentation.segmenter.Segmenter3DInPatchClassWise(
+        self.segmenter = oai_analysis.segmentation.segmenter.Segmenter3DInPatchClassWise(
             mode="pred", config=segmenter_config
         )
 
         ## Initialize registerer
-        #self.registerer = oai_analysis_2.registration.AVSM_Registration(
+        #self.registerer = oai_analysis.registration.AVSM_Registration(
         #    ckpoint_path=os.path.join(utils.get_data_dir(), "pre_trained_registration_model"),
         #    config_path =os.path.join(utils.get_data_dir(), "avsm_settings")
         #
 
-        self.registerer = oai_analysis_2.registration.ICON_Registration()
+        self.registerer = oai_analysis.registration.ICON_Registration()
 
         ## Load Atlas
         self.atlas_image = itk.imread(os.path.join(utils.get_data_dir(), "atlas_60_LEFT_baseline_NMI/atlas_image.nii.gz"))
