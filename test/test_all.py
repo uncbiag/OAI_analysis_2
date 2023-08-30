@@ -1,13 +1,13 @@
 import unittest
 import subprocess
-import oai_analysis_2.utils
+import oai_analysis.utils
 import sys
 import pathlib
 
 import itk
-import oai_analysis_2.analysis_object
-import oai_analysis_2.registration
-from oai_analysis_2 import mesh_processing as mp
+import oai_analysis.analysis_object
+import oai_analysis.registration
+from oai_analysis import mesh_processing as mp
 import numpy as np
 
 TEST_DATA_DIR = pathlib.Path(__file__).parent / "test_files"
@@ -19,7 +19,7 @@ class TestOAIAnalysis(unittest.TestCase):
 
     def setUp(self):
         download_test_data()
-        self.analysis_object = oai_analysis_2.analysis_object.AnalysisObject()
+        self.analysis_object = oai_analysis.analysis_object.AnalysisObject()
 
     def test_SegmentationCPU(self):
         input_image = itk.imread(str(TEST_DATA_DIR / "colab_case/image_preprocessed.nii.gz"))
@@ -90,17 +90,17 @@ class TestOAIAnalysis(unittest.TestCase):
 class TestImports(unittest.TestCase):
 
     def test_ImportsCPU(self):
-        self.analysis_object = oai_analysis_2.analysis_object.AnalysisObject()
+        self.analysis_object = oai_analysis.analysis_object.AnalysisObject()
 
 class TestICONRegistration(unittest.TestCase):
     def setUp(self):
         download_test_data()
 
     def test_RegistrationCPU(self):
-        ICON_obj = oai_analysis_2.registration.ICON_Registration()
+        ICON_obj = oai_analysis.registration.ICON_Registration()
 
         image_A = itk.imread(str(TEST_DATA_DIR / "colab_case/image_preprocessed.nii.gz"))
-        image_B = itk.imread(oai_analysis_2.utils.get_data_dir() + "/atlas_60_LEFT_baseline_NMI/atlas_image.nii.gz")
+        image_B = itk.imread(oai_analysis.utils.get_data_dir() + "/atlas_60_LEFT_baseline_NMI/atlas_image.nii.gz")
 
         ICON_obj.register(image_A, image_B)
 
