@@ -1,6 +1,25 @@
-[<img src="https://github.com/uncbiag/OAI_analysis_2/actions/workflows/github-hosted-action.yml/badge.svg">](https://github.com/uncbiag/OAI_analysis_2/actions)
-
 # OAI Analysis 2
+
+[<img src="https://github.com/uncbiag/OAI_analysis_2/actions/workflows/github-hosted-action.yml/badge.svg">](https://github.com/uncbiag/OAI_analysis_2/actions)
+[![PyPI - Version](https://img.shields.io/pypi/v/oai-analysis.svg)](https://pypi.org/project/oai-analysis)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/oai-analysis.svg)](https://pypi.org/project/oai-analysis)
+
+**Table of Contents**
+
+- [Installation](#installation)
+- [Introduction](#introduction)
+- [Development](#development)
+- [Citation](#citation)
+- [Acknowledgements](#acknowledgements)
+- [License](#license)
+
+## Installation
+
+```console
+pip install oai-analysis
+```
+
+## Introduction
 
 This repository contains open-source analysis approaches for the [Osteoarthritis Initiative (OAI)](https://nda.nih.gov/oai/) magnetic resonance image (MRI) data.
 The analysis code is largely written in Python with the help of [ITK](http://itk.org) and [VTK](http://vtk.org) for data I/O and mesh processing
@@ -32,16 +51,17 @@ We are currently working on the following features which should be available in 
 2. **Workflow management**: Whereas *OAI Analysis* used custom code to avoid recomputing results, we are switching to [Dagster](https://dagster.io/) to manage data dependencies in *OAI Analysis 2*.
 3. **Distribution of analysis results**: As we are planning on not only distributing code, but also analysis results (such as segmentations, meshes, thickness maps) we are planning on supporting data access via the [Interplanetary File System (IPFS)](https://ipfs.io/).
 
-### Installation of dependencies and testing
+## Development
+
+Contributions are appreciated and welcome.
 
 ```
-git clone https://github.com/uncbiag/oai_analysis_2
-cd oai_analysis_2
-pip install -r requirements.txt
-python -m unittest -v discover
+git clone https://github.com/uncbiag/OAI_analysis_2
+cd OAI_analysis_2
+pip install -e .
+pip install pytest
+pytest
 ```
-
-Currently, this should declare that the segmentation test passed, and the registration test failed.
 
 To view the demo notebooks:
 ```
@@ -51,7 +71,7 @@ jupyter notebook
 
 upload test data to https://data.kitware.com/#collection/6205586c4acac99f42957ac3/folder/620559344acac99f42957d63
 
-### Related manuscripts
+## Citation
 
 While we used the following stationary velocity field registration approach available in [easyReg](https://github.com/uncbiag/easyreg) for *OAI Analysis*
 [[paper]](https://biag.cs.unc.edu/publication/dblp-confcvpr-shen-hxn-19/)
@@ -101,7 +121,11 @@ Results obtained by the *OAI Analysis* pipeline can be found in this manuscript
 }
 ```
 
-### Acknowledgements
+## Acknowledgements
 
 This work was developed with support in part from the National Institute of Arthritis and Musculoskeletal and Skin Diseases (NIAMS) 
 under award numbers [1R44AR074375](https://reporter.nih.gov/search/Naf5qSR3eUStFkMfGm6KpQ/project-details/9777582) and [1R01AR072013](https://reporter.nih.gov/search/eE7eB34dVUGoY1nLF3kZNA/project-details/9368542).
+
+## License
+
+`oai-analysis` is distributed under the terms of the [Apache-2.0](https://spdx.org/licenses/Apache-2.0.html) license.
