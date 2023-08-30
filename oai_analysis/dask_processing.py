@@ -115,7 +115,7 @@ def deform_probmap_delayed(phi_AB, image_A, image_B, prob, image_type="FC"):
 def get_thickness(warped_image, mesh_type):
     import itk
     import numpy as np
-    from oai_analysis_2 import mesh_processing as mp
+    from oai_analysis import mesh_processing as mp
 
     distance_inner, _ = mp.get_thickness_mesh(warped_image, mesh_type=mesh_type)
     distance_inner_itk = mp.get_itk_mesh(distance_inner)
@@ -126,12 +126,12 @@ def get_thickness(warped_image, mesh_type):
 def segment_method(image_A):
     import itk
     from itk import IntensityWindowingImageFilter as IntensityWindowingImageFilter
-    import oai_analysis_2
+    import oai_analysis
     import torch
     import os
     from os.path import exists
-    from oai_analysis_2 import utils
-    from oai_analysis_2.segmentation import segmenter
+    from oai_analysis import utils
+    from oai_analysis.segmentation import segmenter
     import numpy as np
     import urllib.request
     import gc
@@ -167,7 +167,7 @@ def segment_method(image_A):
         output_itk=True,
     )
 
-    segmenter = oai_analysis_2.segmentation.segmenter.Segmenter3DInPatchClassWise(
+    segmenter = oai_analysis.segmentation.segmenter.Segmenter3DInPatchClassWise(
         mode="pred", config=segmenter_config
     )
 

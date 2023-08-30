@@ -1,7 +1,0 @@
-torch
-itk==5.3
-trimesh
-vtk
-icon_registration==0.3.4
-girder_client
-scikit-image
