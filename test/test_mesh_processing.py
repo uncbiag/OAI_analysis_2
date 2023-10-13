@@ -4,8 +4,22 @@ from oai_analysis import mesh_processing as mp
 import trimesh
 from pathlib import Path
 import numpy as np
+import itk
 
 vtk = pytest.importorskip("vtk")
+
+def test_get_mesh():
+    test_prob_filepath = Path(__file__).parent / "test_files" / "colab_case" / "TC_probmap.nii.gz"
+    image = itk.imread(test_prob_filepath)
+    mesh = mp.get_mesh_from_probability_map(image)
+
+    baseline_mesh_filepath = Path(__file__).parent / "test_files" / "colab_case" / "TC_mesh.vtk"
+    baseline = itk.meshread(baseline_mesh_filepath)
+
+    trimesh = mp.get_trimesh(mesh)
+    baseline_trimesh = mp.get_trimesh(baseline)
+    np.testing.assert_allclose(trimesh.vertices, baseline_trimesh.vertices, atol=0.02)
+
 
 def test_get_cell_normals():
     test_filepath = Path(__file__).parent / "test_files" / "colab_case" / "avsm" / "TC_mesh_world.ply"
