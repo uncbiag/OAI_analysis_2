@@ -33,7 +33,7 @@ dependencies = [
   "trimesh",
   "vtk",
   "icon_registration==0.3.4",
-  "girder_client",
+  "pooch",
   "scikit-image",
 ]
 
