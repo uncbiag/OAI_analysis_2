@@ -1,8 +1,8 @@
 import itk
 import torch
-from oai_analysis import utils
 import oai_analysis.segmentation.segmenter
 import oai_analysis.registration
+from oai_analysis.data import atlases_dir, models_dir
 
 import os
 
@@ -16,9 +16,8 @@ class AnalysisObject:
 
         ## Initialize segmenter
         segmenter_config = dict(
-            ckpoint_path=os.path.join(utils.get_data_dir(), "segmentation_model.pth.tar"),
-            training_config_file=os.path.join(utils.get_data_dir()
-            , "segmentation_train_config.pth.tar"),
+            ckpoint_path=str(models_dir() / "segmentation_model.pth.tar"),
+            training_config_file=str(models_dir() / "segmentation_train_config.pth.tar"),
             device=self.device,
             batch_size=4,
             overlap_size=(16, 16, 8),
@@ -31,14 +30,15 @@ class AnalysisObject:
 
         ## Initialize registerer
         #self.registerer = oai_analysis.registration.AVSM_Registration(
-        #    ckpoint_path=os.path.join(utils.get_data_dir(), "pre_trained_registration_model"),
-        #    config_path =os.path.join(utils.get_data_dir(), "avsm_settings")
+        #    from oai_analysis.test_data import data_dir
+        #    ckpoint_path = data_dir() / "pre_trained_registration_model"
+        #    config_path = data_dir() / "avsm_settings"
         #
 
         self.registerer = oai_analysis.registration.ICON_Registration()
 
         ## Load Atlas
-        self.atlas_image = itk.imread(os.path.join(utils.get_data_dir(), "atlas_60_LEFT_baseline_NMI/atlas_image.nii.gz"))
+        self.atlas_image = itk.imread(atlases_dir() / "atlas_60_LEFT_baseline_NMI" / "atlas_image.nii.gz")
 
     def segment(self, preprocessed_image):
         FC_probmap, TC_probmap = self.segmenter.segment(preprocessed_image, if_output_prob_map=True, if_output_itk=True)
