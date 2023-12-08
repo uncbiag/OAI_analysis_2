@@ -29,10 +29,11 @@ classifiers = [
 dependencies = [
   "torch",
   "itk==5.3",
+  "itk-cuberille",
   "trimesh",
   "vtk",
   "icon_registration==0.3.4",
-  "girder_client",
+  "pooch",
   "scikit-image",
 ]
 

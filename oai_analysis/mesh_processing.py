@@ -339,6 +339,15 @@ def get_mesh(itk_image, num_iterations=150):
     mesh = smooth_mesh(mesh, num_iterations=num_iterations)
     return mesh
 
+# To obtain mesh from itk image probability map
+def get_mesh_from_probability_map(image: itk.Image) -> itk.Mesh:
+    mesh = itk.cuberille_image_to_mesh_filter(image,
+                                              generate_triangle_faces=True,
+                                              iso_surface_value=0.5,
+                                              project_vertices_to_iso_surface=True,
+                                              project_vertex_surface_distance_threshold=0.05)
+    return mesh
+
 
 # To obtain inner and outer mesh splits given the mesh type
 def split_mesh(mesh, mesh_type="FC"):
