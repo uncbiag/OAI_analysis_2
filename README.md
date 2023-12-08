@@ -27,6 +27,11 @@ Now we are ready to actually install it
 pip install oai-analysis
 ```
 
+If you are interested in running the example Jupyter notebooks simply install Jupyter support
+```console
+pip install jupyter
+```
+
 ## Introduction
 
 This repository contains open-source analysis approaches for the [Osteoarthritis Initiative (OAI)](https://nda.nih.gov/oai/) magnetic resonance image (MRI) data.
