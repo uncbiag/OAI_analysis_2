@@ -146,13 +146,13 @@ def segment_method(image_A):
     if not exists("segmentation_model.pth.tar"):
         print("Downloading segmentation model")
         urllib.request.urlretrieve(
-            "https://github.com/uncbiag/OAI_analysis_2/blob/master/data/segmentation_model.pth.tar?raw=true",
+            "https://github.com/uncbiag/OAI_analysis_2/blob/main/data/segmentation_model.pth.tar?raw=true",
             "segmentation_model.pth.tar",
         )
 
     if not exists("segmentation_train_config.pth.tar"):
         urllib.request.urlretrieve(
-            "https://github.com/uncbiag/OAI_analysis_2/blob/master/data/segmentation_train_config.pth.tar?raw=true",
+            "https://github.com/uncbiag/OAI_analysis_2/blob/main/data/segmentation_train_config.pth.tar?raw=true",
             "segmentation_train_config.pth.tar",
         )
 
