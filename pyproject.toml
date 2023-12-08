@@ -32,7 +32,7 @@ dependencies = [
   "itk-cuberille",
   "trimesh",
   "vtk",
-  "icon_registration==0.3.4",
+  "icon_registration==1.1.2",
   "pooch",
   "scikit-image",
 ]
