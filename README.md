@@ -15,6 +15,14 @@
 
 ## Installation
 
+To keep the installation separate it is best to first create a virtual environement (same for the development install below).
+With anaconda this would for example be done as follows
+```console
+conda create --name oai_analysis_2 python=3.8 pip
+conda activate oai_analysis_2
+```
+
+Now we are ready to actually install it
 ```console
 pip install oai-analysis
 ```
