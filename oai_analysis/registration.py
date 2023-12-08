@@ -17,10 +17,7 @@ class AVSM_Registration:
 
 class ICON_Registration:
     def __init__(self):
-        self.register_module = icon_registration.pretrained_models.OAI_knees_registration_model(pretrained=True)
-        icon_registration.network_wrappers.adjust_batch_size(self.register_module, 1)
-        self.register_module.cpu()
-        #self.register_module.cuda()
+        self.register_module = icon_registration.pretrained_models.OAI_knees_gradICON_model(pretrained=True)
 
     def register(self, fixed_image, moving_image):
         print("fixed range", np.min(fixed_image), np.max(fixed_image))
