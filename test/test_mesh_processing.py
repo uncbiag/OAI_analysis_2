@@ -4,13 +4,28 @@ from oai_analysis import mesh_processing as mp
 import trimesh
 from pathlib import Path
 import numpy as np
+import itk
+from oai_analysis.data import test_data_dir as data_dir
 
 vtk = pytest.importorskip("vtk")
 
-def test_get_cell_normals():
-    test_filepath = Path(__file__).parent / "test_files" / "colab_case" / "avsm" / "TC_mesh_world.ply"
+def test_get_mesh():
+    test_prob_filepath = data_dir() / "colab_case" / "TC_probmap.nii.gz"
+    image = itk.imread(test_prob_filepath)
+    mesh = mp.get_mesh_from_probability_map(image)
 
-    # test_filepath = Path(__file__).parent / "test_files" / "colab_case" / "avsm" / "TC_mesh_world.off"
+    baseline_mesh_filepath = data_dir() / "colab_case" / "TC_mesh.vtk"
+    baseline = itk.meshread(baseline_mesh_filepath)
+
+    trimesh = mp.get_trimesh(mesh)
+    baseline_trimesh = mp.get_trimesh(baseline)
+    np.testing.assert_allclose(trimesh.vertices, baseline_trimesh.vertices, atol=0.02)
+
+
+def test_get_cell_normals():
+    test_filepath = data_dir() / "colab_case" / "avsm" / "TC_mesh_world.ply"
+
+    # test_filepath = data_dir() / "colab_case" / "avsm" / "TC_mesh_world.off"
     # mesh = itk.meshread(str(test_filepath))
     # mesh = mp.get_trimesh(mesh)
 
@@ -44,7 +59,7 @@ def test_get_cell_normals():
 
 
 def test_get_cell_centroid():
-    test_filepath = Path(__file__).parent / "test_files" / "colab_case" / "avsm" / "TC_mesh_world.ply"
+    test_filepath = data_dir() / "colab_case" / "avsm" / "TC_mesh_world.ply"
 
     mesh = trimesh.load_mesh(str(test_filepath))
     def trimesh_get_cell_centroid(mesh):
