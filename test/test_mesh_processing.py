@@ -103,3 +103,37 @@ def test_get_cell_centroid():
     trimesh_centroid = trimesh_get_cell_centroid(mesh)
 
     np.testing.assert_allclose(vtk_centroid, trimesh_centroid, atol=0.02)
+
+def test_split_femoral_cartilage_surface():
+    test_prob_filepath = data_dir() / "colab_case" / "TC_probmap.nii.gz"
+    image = itk.imread(test_prob_filepath)
+    itk_mesh = mp.get_mesh_from_probability_map(image)
+    # vtk_mesh = mp.get_mesh(image)
+
+    # itk_mesh = mp.get_itk_mesh(vtk_mesh)
+    mesh_cell_normals = mp.get_cell_normals(itk_mesh)
+    mesh_cell_centroids = mp.get_cell_centroids(itk_mesh)
+
+    baseline_mesh_filepath = data_dir() / "colab_case" / "TC_mesh.vtk"
+    baseline = itk.meshread(baseline_mesh_filepath)
+    inner_mesh, outer_mesh, inner_face_list, outer_face_list = \
+        mp.split_femoral_cartilage_surface(itk_mesh, mesh_cell_normals, mesh_cell_centroids)
+
+    baseline_mesh_filepath = data_dir() / "colab_case" / "TC_mesh_femoral_cartilage_inner_surface.vtk"
+    import vtk
+    writer = vtk.vtkPolyDataWriter()
+    writer.SetInputData(inner_mesh)
+    writer.SetFileName(baseline_mesh_filepath)
+    writer.Write()
+ 
+    baseline_mesh_filepath = data_dir() / "colab_case" / "TC_mesh_femoral_cartilage_outer_surface.vtk"
+    import vtk
+    writer = vtk.vtkPolyDataWriter()
+    writer.SetInputData(outer_mesh)
+    writer.SetFileName(baseline_mesh_filepath)
+    writer.Write()
+
+    print(vtk_mesh)
+    print(itk_mesh)
+    print(inner_mesh)
+    print(inner_face_list)
