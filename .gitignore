@@ -4,3 +4,5 @@ test/test_files/*
 **/*.swp
 pretrained_OAI_model
 oai_analysis/data/
+venv/
+network_weights/

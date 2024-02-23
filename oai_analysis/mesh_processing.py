@@ -204,7 +204,7 @@ def split_tibial_cartilage_surface(mesh, mesh_normals, mesh_centroids):
         (mesh_centroids_normalized * 1, mesh_normals * 10), axis=1
     )
 
-    est = KMeans(n_clusters=2, algorithm="full", random_state=5)
+    est = KMeans(n_clusters=2, algorithm="lloyd", random_state=5)
     labels = est.fit(features).labels_
 
     # transfer 0/1 labels to -1/1 labels
@@ -228,7 +228,7 @@ def cluster_and_segment(mesh_centroids_normalized, face_normal_value, dot_output
     features = np.concatenate(
         (mesh_centroids_normalized * 1, face_normal_value, dot_output), axis=1
     )
-    est1 = KMeans(n_clusters=2, algorithm="full", n_init=5, random_state=5)
+    est1 = KMeans(n_clusters=2, algorithm="lloyd", n_init=5, random_state=5)
     labels_upper = est1.fit(features).labels_
     labels_upper = labels_upper * 2 - 1
 
