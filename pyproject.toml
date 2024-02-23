@@ -35,6 +35,7 @@ dependencies = [
   "icon_registration==1.1.2",
   "pooch",
   "scikit-image",
+  "scikit-learn",
 ]
 
 [project.urls]
