@@ -28,8 +28,8 @@ classifiers = [
 ]
 dependencies = [
   "torch",
-  "itk==5.3",
-  "itk-cuberille",
+  "itk == 5.4.*",
+  "itk-cuberille >= 2.7.0",
   "trimesh",
   "vtk",
   "icon_registration==0.3.4",
