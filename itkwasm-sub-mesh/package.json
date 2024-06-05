@@ -2,7 +2,7 @@
   "name": "itkwasm-sub-mesh-build",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "pnpm@8.15.1",
+  "packageManager": "pnpm@9.1.4",
   "description": "Scripts to generate itkwasm-sub-mesh itk-wasm artifacts.",
   "type": "module",
   "itk-wasm": {
@@ -38,7 +38,7 @@
   "devDependencies": {
     "@itk-wasm/dam": "^1.1.1",
     "@thewtex/setup-micromamba": "^1.9.7",
-    "itk-wasm": "1.0.0-b.168"
+    "itk-wasm": "1.0.0-b.176"
   },
   "author": "Matt McCormick",
   "repository": {
