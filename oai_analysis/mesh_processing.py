@@ -23,7 +23,7 @@ from sklearn.decomposition import PCA
 # Helper Functions for Mesh Processing
 
 # Get Centroid of all the cells
-def get_cell_centroid(mesh: itk.Mesh):
+def get_cell_centroids(mesh: itk.Mesh):
     mesh = get_trimesh(mesh)
     centroid_array = np.zeros([len(mesh.faces), 3])
     num_of_cells = len(mesh.faces)
@@ -192,6 +192,10 @@ def get_vtk_sub_mesh(input_mesh, inner_face_list):
 
     return polydata
 
+# Create a Mesh by selecting relevant faces only
+def get_itk_sub_mesh(input_mesh: itk.Mesh, inner_face_list: np.ndarray):
+    trimesh_mesh = get_trimesh(input_mesh)
+
 
 # For splitting the Tibial cartilage
 def split_tibial_cartilage_surface(mesh, mesh_normals, mesh_centroids):
@@ -245,7 +249,9 @@ def split_femoral_cartilage_surface(mesh, face_normal, face_centroid, num_divisi
         np.max(face_centroid, axis=0) - np.min(face_centroid, axis=0)
     )
 
-    (xmin, xmax, ymin, ymax, zmin, zmax) = mesh.GetBounds()
+    # breakpoint()
+    # (xmin, xmax, ymin, ymax, zmin, zmax) = mesh.GetBounds()
+    (xmin, xmax, ymin, ymax, zmin, zmax) = np.asarray(mesh.GetBoundingBox().GetBounds())
     bbox_min = np.array([xmin, ymin, zmin])
     bbox_max = np.array([xmax, ymax, zmax])
 
@@ -295,6 +301,7 @@ def split_femoral_cartilage_surface(mesh, face_normal, face_centroid, num_divisi
 
 
 # For smoothing the input mesh. Change number of iterations as per usecase.
+
 def smooth_mesh(input_mesh, num_iterations=150):
     smoothing_filter = vtk.vtkSmoothPolyDataFilter()
     smoothing_filter.SetNumberOfIterations(num_iterations)
@@ -350,11 +357,11 @@ def get_mesh_from_probability_map(image: itk.Image) -> itk.Mesh:
 
 
 # To obtain inner and outer mesh splits given the mesh type
-def split_mesh(mesh, mesh_type="FC"):
+def split_mesh(mesh: itk.Mesh, mesh_type: str = "FC"):
     # Obtain the cell normals and centroids to be used for splittig the cartilage
     itk_mesh = get_itk_mesh(mesh)
     mesh_cell_normals = get_cell_normals(itk_mesh)
-    mesh_cell_centroids = get_cell_centroid(itk_mesh)
+    mesh_cell_centroids = get_cell_centroids(itk_mesh)
 
     # Split the mesh
     if mesh_type == "FC":
@@ -364,28 +371,31 @@ def split_mesh(mesh, mesh_type="FC"):
             inner_face_list,
             outer_face_list,
         ) = split_femoral_cartilage_surface(
-            mesh, mesh_cell_normals, mesh_cell_centroids
+            itk_mesh, mesh_cell_normals, mesh_cell_centroids
         )
-    else:
+    elif mesh_type == "TC":
         (
             inner_mesh,
             outer_mesh,
             inner_face_list,
             outer_face_list,
         ) = split_tibial_cartilage_surface(mesh, mesh_cell_normals, mesh_cell_centroids)
+    else:
+        raise ValueError("Invalid mesh type")
 
     return inner_mesh, outer_mesh
 
 
 # Obtain the thickness of the input itk_image by creating a mesh and splitting it.
-def get_thickness_mesh(itk_image, mesh_type="FC", num_iterations=150):
+def get_thickness_mesh(itk_image: itk.Image, mesh_type: str ="FC"):
     """
     Takes the probability map obtained from the segmentation algorithm as an itk image.
     Constructs a VTK mesh from it and returns the thickness between the inner and outer splitted mesh.
     Takes as argument the type of mesh 'FC' or 'TC'.
     """
     # Get mesh from itk image
-    mesh = get_mesh(itk_image, num_iterations=150)
+    mesh = get_mesh(itk_image)
+    # mesh = get_mesh_from_probability_map(itk_image)
 
     # Split the mesh into inner and outer
     inner_mesh, outer_mesh = split_mesh(mesh, mesh_type)

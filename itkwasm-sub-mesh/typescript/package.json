@@ -1,0 +1,53 @@
+{
+  "name": "@itk-wasm/sub-mesh",
+  "version": "2.0.0",
+  "description": "Extract a subset of a mesh given by the cell identifiers.",
+  "type": "module",
+  "module": "./dist/index.js",
+  "types": "./dist/index-all.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index-all.d.ts",
+      "browser": "./dist/index.js",
+      "node": "./dist/index-node.js",
+      "default": "./dist/index-all.js"
+    }
+  },
+  "scripts": {
+    "start": "pnpm copyDemoAppAssets && vite",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "pnpm build:tsc && pnpm build:browser:workerEmbedded && pnpm build:browser:workerEmbeddedMin && pnpm build:demo",
+    "build:browser:workerEmbedded": "esbuild --loader:.worker.js=dataurl --bundle --format=esm --outfile=./dist/bundle/index-worker-embedded.js ./src/index-worker-embedded.ts",
+    "build:browser:workerEmbeddedMin": "esbuild --minify --loader:.worker.js=dataurl --bundle --format=esm --outfile=./dist/bundle/index-worker-embedded.min.js ./src/index-worker-embedded.min.ts",
+    "build:tsc": "tsc --pretty",
+    "copyDemoAppAssets": "shx mkdir -p test/browser/demo-app/public/shoelace && shx cp -r node_modules/@itk-wasm/demo-app/dist/assets test/browser/demo-app/public/",
+    "build:tsc": "pnpm build:version && tsc --pretty",
+    "build:demo": "pnpm copyDemoAppAssets && vite build"
+  },
+  "keywords": [
+    "itk",
+    "wasm",
+    "webassembly",
+    "wasi"
+  ],
+  "author": "",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "itk-wasm": "1.0.0-b.176"
+  },
+  "devDependencies": {
+    "@itk-wasm/image-io": "^1.2.1",
+    "@itk-wasm/mesh-io": "^1.2.1",
+    "@itk-wasm/demo-app": "^0.2.0",
+    "@types/node": "^20.2.5",
+    "esbuild": "^0.19.8",
+    "shx": "^0.3.4",
+    "typescript": "^5.4.3",
+    "vite": "^4.5.0",
+    "vite-plugin-static-copy": "^0.17.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/uncbiag/OAI_analysis_2"
+  }
+}
