@@ -10,20 +10,6 @@ import icon_registration.pretrained_models as pretrained_models
 from analysis_object import AnalysisObject
 import mesh_processing as mp
 
-def cast_image_as(image, pixel_type):
-    """
-    Casts the input image to the specified pixel type.
-
-    :param image: input image.
-    :param pixel_type: desired pixel type.
-    :return: casted image.
-    """
-    cast_filter_type = itk.CastImageFilter[type(image), itk.Image[pixel_type, image.ndim]].New()
-    cast_filter_type.SetInPlace(False)
-    cast_filter_type.SetInput(image)
-    cast_filter_type.Update()
-    itk_image = cast_filter_type.GetOutput()
-    return itk_image
 
 def analysis_pipeline(input_path, output_path):
     """
@@ -42,7 +28,6 @@ def analysis_pipeline(input_path, output_path):
     model = pretrained_models.OAI_knees_registration_model()
     DATA_DIR = pathlib.Path(__file__).parent / "data"
     atlas_filename = DATA_DIR / "atlases/atlas_60_LEFT_baseline_NMI/atlas.nii.gz"
-    # in_image_D = cast_image_as(in_image, itk.D)
     in_image_D = in_image.astype(itk.D)
     atlas_image = itk.imread(atlas_filename, itk.D)
 
