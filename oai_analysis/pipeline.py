@@ -24,6 +24,10 @@ def analysis_pipeline(input_path, output_path):
     obj = AnalysisObject()
     FC_prob, TC_prob = obj.segment(in_image)
 
+    # Get the thickness map for the meshes
+    distance_inner_FC, distance_outer_FC = mp.get_thickness_mesh(FC_prob, mesh_type='FC')
+    distance_inner_TC, distance_outer_TC = mp.get_thickness_mesh(TC_prob, mesh_type='TC')
+
     # Register the input image to the atlas
     model = pretrained_models.OAI_knees_registration_model()
     DATA_DIR = pathlib.Path(__file__).parent / "data"
@@ -33,36 +37,11 @@ def analysis_pipeline(input_path, output_path):
 
     phi_AB, phi_BA = itk_wrapper.register_pair(model, in_image_D, atlas_image)
     interpolator = itk.LinearInterpolateImageFunction.New(in_image_D)
-    warped_image_A = itk.resample_image_filter(in_image_D,
-                                               transform=phi_AB,
-                                               interpolator=interpolator,
-                                               size=itk.size(atlas_image),
-                                               output_spacing=itk.spacing(atlas_image),
-                                               output_direction=atlas_image.GetDirection(),
-                                               output_origin=atlas_image.GetOrigin()
-                                               )
 
-    # For deforming the FC and TC probability images using the transform obtained after registration
-    warped_image_FC = itk.resample_image_filter(FC_prob,
-                                                transform=phi_AB,
-                                                interpolator=interpolator,
-                                                size=itk.size(atlas_image),
-                                                output_spacing=itk.spacing(atlas_image),
-                                                output_direction=atlas_image.GetDirection(),
-                                                output_origin=atlas_image.GetOrigin()
-                                                )
-    warped_image_TC = itk.resample_image_filter(TC_prob,
-                                                transform=phi_AB,
-                                                interpolator=interpolator,
-                                                size=itk.size(atlas_image),
-                                                output_spacing=itk.spacing(atlas_image),
-                                                output_direction=atlas_image.GetDirection(),
-                                                output_origin=atlas_image.GetOrigin()
-                                                )
-
-    # Get the thickness map for the meshes
-    distance_inner_FC, distance_outer_FC = mp.get_thickness_mesh(warped_image_FC, mesh_type='FC')
-    distance_inner_TC, distance_outer_TC = mp.get_thickness_mesh(warped_image_TC, mesh_type='TC')
+    # transform the thickness measurements to the atlas space
+    # we use modelling transform, which is the inverse of the image resampling transform
+    transformed_mesh_FC = itk.transform_mesh_filter(distance_inner_FC, transform=phi_BA)
+    transformed_mesh_TC = itk.transform_mesh_filter(distance_inner_TC, transform=phi_BA)
 
     # Get inner and outer meshes for the TC and FC atlas meshes
     prob_fc_atlas = itk.imread(DATA_DIR / "atlases/atlas_60_LEFT_baseline_NMI/atlas_fc.nii.gz")
@@ -73,8 +52,8 @@ def analysis_pipeline(input_path, output_path):
     inner_mesh_tc_atlas, outer_mesh_tc_atlas = mp.split_mesh(mesh_tc_atlas, mesh_type='TC')
 
     # For mapping the thickness to the atlas mesh
-    mapped_mesh_fc = mp.map_attributes(distance_inner_FC, inner_mesh_fc_atlas)
-    mapped_mesh_tc = mp.map_attributes(distance_inner_TC, inner_mesh_tc_atlas)
+    mapped_mesh_fc = mp.map_attributes(transformed_mesh_FC, inner_mesh_fc_atlas)
+    mapped_mesh_tc = mp.map_attributes(transformed_mesh_TC, inner_mesh_tc_atlas)
 
     os.makedirs(output_path, exist_ok=True)
 
