@@ -11,6 +11,23 @@ from analysis_object import AnalysisObject
 import mesh_processing as mp
 
 
+def transform_mesh(mesh, transform):
+    """
+    Transform the input mesh using the provided transform.
+
+    :param mesh: input mesh
+    :param transform: The modelling transform to use (the inverse of image resampling transform)
+    :return: transformed mesh
+    """
+    ttype = itk.TransformMeshFilter[itk.Mesh[itk.SS, 3], itk.Mesh[itk.SS, 3], itk.Transform[itk.D, 3, 3]]
+    filter = ttype()
+    filter.SetInput(mesh)
+    filter.SetTransform(transform)
+    filter.Update()
+    transformed_mesh = filter.GetOutput()
+    return transformed_mesh
+
+
 def analysis_pipeline(input_path, output_path):
     """
     Computes cartilage thickness for femur and tibia from knee MRI.
@@ -40,8 +57,8 @@ def analysis_pipeline(input_path, output_path):
 
     # transform the thickness measurements to the atlas space
     # we use modelling transform, which is the inverse of the image resampling transform
-    transformed_mesh_FC = itk.transform_mesh_filter(distance_inner_FC, transform=phi_BA)
-    transformed_mesh_TC = itk.transform_mesh_filter(distance_inner_TC, transform=phi_BA)
+    transformed_mesh_FC = transform_mesh(distance_inner_FC, transform=phi_BA)
+    transformed_mesh_TC = transform_mesh(distance_inner_TC, transform=phi_BA)
 
     # Get inner and outer meshes for the TC and FC atlas meshes
     prob_fc_atlas = itk.imread(DATA_DIR / "atlases/atlas_60_LEFT_baseline_NMI/atlas_fc.nii.gz")
