@@ -1,18 +1,25 @@
 import os
 import pathlib
 
-import numpy as np
-import itk
-import matplotlib.pyplot as plt
 import icon_registration.itk_wrapper as itk_wrapper
 import icon_registration.pretrained_models as pretrained_models
-import vtk
-
-from analysis_object import AnalysisObject
+import itk
+import matplotlib.pyplot as plt
 import mesh_processing as mp
+import vtk
+from analysis_object import AnalysisObject
 
 
-def transform_mesh(mesh, transform, filename_prefix):
+def write_vtk_mesh(mesh, filename):
+    writer = vtk.vtkPolyDataWriter()
+    writer.SetFileName(filename)
+    writer.SetInputData(mesh)
+    writer.SetFileVersion(42)  # ITK does not support newer version (5.1)
+    writer.SetFileTypeToBinary()  # reading and writing binary files is faster
+    writer.Write()
+
+
+def transform_mesh(mesh, transform, filename_prefix, keep_intermediate_outputs):
     """
     Transform the input mesh using the provided transform.
 
@@ -21,14 +28,7 @@ def transform_mesh(mesh, transform, filename_prefix):
     :param filename_prefix: prefix (including path) for the intermediate file names
     :return: transformed mesh
     """
-    writer = vtk.vtkPolyDataWriter()
-    writer.SetFileName(filename_prefix + "_original.vtk")
-    writer.SetInputData(mesh)
-    writer.SetFileVersion(42)  # ITK does not support newer version (5.1)
-    writer.SetFileTypeToBinary()  # reading and writing binary files is faster
-    writer.Write()
-
-    itk_mesh = itk.meshread(filename_prefix + "_original.vtk")
+    itk_mesh = mp.get_itk_mesh(mesh)
     t_mesh = itk.transform_mesh_filter(itk_mesh, transform=transform)
     # itk.meshwrite(t_mesh, filename_prefix + "_transformed.vtk", binary=True)  # does not work in 5.4 and earlier
     itk.meshwrite(t_mesh, filename_prefix + "_transformed.vtk", compression=True)
@@ -37,10 +37,16 @@ def transform_mesh(mesh, transform, filename_prefix):
     reader.SetFileName(filename_prefix + "_transformed.vtk")
     reader.Update()
     transformed_mesh = reader.GetOutput()
+
+    if keep_intermediate_outputs:
+        write_vtk_mesh(mesh, filename_prefix + "_original.vtk")
+    else:
+        os.remove(filename_prefix + "_transformed.vtk")
+
     return transformed_mesh
 
 
-def analysis_pipeline(input_path, output_path):
+def analysis_pipeline(input_path, output_path, keep_intermediate_outputs):
     """
     Computes cartilage thickness for femur and tibia from knee MRI.
 
@@ -49,10 +55,15 @@ def analysis_pipeline(input_path, output_path):
     """
     in_image = itk.imread(input_path, pixel_type=itk.F)
     os.makedirs(output_path, exist_ok=True)  # also holds intermediate results
+    if keep_intermediate_outputs:
+        itk.imwrite(in_image, os.path.join(output_path, "in_image.nrrd"))
 
     # segment the femoral and tibial cartilage
     obj = AnalysisObject()
     FC_prob, TC_prob = obj.segment(in_image)
+    if keep_intermediate_outputs:
+        itk.imwrite(FC_prob, os.path.join(output_path, "FC_prob.nrrd"), compression=True)
+        itk.imwrite(TC_prob, os.path.join(output_path, "TC_prob.nrrd"), compression=True)
 
     # Get the thickness map for the meshes
     distance_inner_FC, distance_outer_FC = mp.get_thickness_mesh(FC_prob, mesh_type='FC')
@@ -66,20 +77,27 @@ def analysis_pipeline(input_path, output_path):
     atlas_image = itk.imread(atlas_filename, itk.D)
 
     phi_AB, phi_BA = itk_wrapper.register_pair(model, in_image_D, atlas_image)
-    interpolator = itk.LinearInterpolateImageFunction.New(in_image_D)
+    if keep_intermediate_outputs:
+        print("Saving registration results crashes, skipping")
+        # itk.transformwrite(phi_AB, os.path.join(output_path, "resampling.tfm"))
+        # itk.transformwrite(phi_BA, os.path.join(output_path, "modelling.tfm"))
 
     # transform the thickness measurements to the atlas space
     # we use modelling transform, which is the inverse of the image resampling transform
-    transformed_mesh_FC = transform_mesh(distance_inner_FC, transform=phi_BA, filename_prefix=output_path + "/FC")
-    transformed_mesh_TC = transform_mesh(distance_inner_TC, transform=phi_BA, filename_prefix=output_path + "/TC")
+    transformed_mesh_FC = transform_mesh(distance_inner_FC, transform=phi_BA, filename_prefix=output_path + "/FC",
+                                         keep_intermediate_outputs=keep_intermediate_outputs)
+    transformed_mesh_TC = transform_mesh(distance_inner_TC, transform=phi_BA, filename_prefix=output_path + "/TC",
+                                         keep_intermediate_outputs=keep_intermediate_outputs)
 
     # Get inner and outer meshes for the TC and FC atlas meshes
     prob_fc_atlas = itk.imread(DATA_DIR / "atlases/atlas_60_LEFT_baseline_NMI/atlas_fc.nii.gz")
     mesh_fc_atlas = mp.get_mesh(prob_fc_atlas)
     inner_mesh_fc_atlas, outer_mesh_fc_atlas = mp.split_mesh(mesh_fc_atlas, mesh_type='FC')
+    write_vtk_mesh(inner_mesh_fc_atlas, output_path + "/inner_mesh_fc_atlas.vtk")
     prob_tc_atlas = itk.imread(DATA_DIR / "atlases/atlas_60_LEFT_baseline_NMI/atlas_tc.nii.gz")
     mesh_tc_atlas = mp.get_mesh(prob_tc_atlas)
     inner_mesh_tc_atlas, outer_mesh_tc_atlas = mp.split_mesh(mesh_tc_atlas, mesh_type='TC')
+    write_vtk_mesh(inner_mesh_tc_atlas, output_path + "/inner_mesh_tc_atlas.vtk")
 
     # For mapping the thickness to the atlas mesh
     mapped_mesh_fc = mp.map_attributes(transformed_mesh_FC, inner_mesh_fc_atlas)
@@ -118,4 +136,4 @@ if __name__ == "__main__":
 
     for i, case in enumerate(test_cases):
         print(f"Processing case {case}")
-        analysis_pipeline(case, f"./OAI_results/case_{i:03d}")
+        analysis_pipeline(case, output_path=f"./OAI_results/case_{i:03d}", keep_intermediate_outputs=True)
