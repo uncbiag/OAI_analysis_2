@@ -125,9 +125,6 @@ def analysis_pipeline(input_path, output_path, keep_intermediate_outputs):
     plt.draw()
     plt.savefig(output_path + '/thickness_FC.png')
 
-    out_image_path = os.path.join(output_path, "in_image.nrrd")
-    itk.imwrite(in_image, out_image_path)  # for debugging
-
 
 if __name__ == "__main__":
     test_cases = [
@@ -139,5 +136,5 @@ if __name__ == "__main__":
     ]
 
     for i, case in enumerate(test_cases):
-        print(f"Processing case {case}")
+        print(f"\nProcessing case {case}")
         analysis_pipeline(case, output_path=f"./OAI_results/case_{i:03d}", keep_intermediate_outputs=True)
