@@ -468,33 +468,33 @@ def compute_least_square_circle(x, y):
 
 
 # For getting the cylinder
-def get_cylinder(vertice):
-    x, y = vertice[:, 0], vertice[:, 1]
-    z_min, z_max = np.min(vertice[:, 2]), np.max(vertice[:, 2])
-    center, r = compute_least_square_circle(x, y)
-    return (center, r), (z_min, z_max)
+def get_cylinder(vertices):
+    y, z = vertices[:, 1], vertices[:, 2]
+    x_min, x_max = np.min(vertices[:, 0]), np.max(vertices[:, 0])
+    center, r = compute_least_square_circle(y, z)
+    return (center, r), (x_min, x_max)
 
 
 # Project the vertices to the cylinder.
-def get_projection_from_circle_and_vertice(vertice, circle):
+def get_projection_from_circle_and_vertices(vertices, circle):
     def equal_scale(input, ref):
         input = (input - np.min(input)) / (np.max(input) - np.min(input))
         input = input * (np.max(ref) - np.min(ref)) * 1.5 + np.min(ref)
         return input
 
     center, r = circle
-    x, y = vertice[:, 0], vertice[:, 1]
+    x, y = vertices[:, 0], vertices[:, 1]
     radian = np.arctan2(y - center[1], x - center[0])
 
-    embedded = np.zeros([len(vertice), 2])
+    embedded = np.zeros([len(vertices), 2])
     embedded[:, 0] = radian
-    embedded[:, 1] = vertice[:, 2]
+    embedded[:, 1] = vertices[:, 0]
 
     plot_xy = np.zeros_like(embedded)
     angle = radian / np.pi * 180
-    angle = equal_scale(angle, vertice[:, 2])
+    angle = equal_scale(angle, vertices[:, 0])
     plot_xy[:, 0] = angle
-    plot_xy[:, 1] = vertice[:, 2]
+    plot_xy[:, 1] = vertices[:, 0]
     return embedded, plot_xy
 
 
@@ -502,11 +502,11 @@ def get_projection_from_circle_and_vertice(vertice, circle):
 # Takes as arugment the projected points (embedded), if not given then re-uses the
 # already transformed points in the atlas mesh for the given mesh type.
 def project_thickness(mapped_mesh, mesh_type="FC", embedded=None):
-    def do_linear_pca(vertice, dim=3):
+    def do_linear_pca(vertex, dim=3):
         from sklearn.decomposition import KernelPCA
 
         kpca = KernelPCA(n_components=2, degree=dim, n_jobs=None)
-        embedded = kpca.fit_transform(vertice)
+        embedded = kpca.fit_transform(vertex)
         return embedded
 
     def rotate_embedded(embedded, angle):
@@ -517,24 +517,24 @@ def project_thickness(mapped_mesh, mesh_type="FC", embedded=None):
         embedded = c = np.dot(embedded, rotMatrix)
         return embedded
 
-    point_data = np.array(mapped_mesh.GetPointData().GetScalars())
+    thickness = np.array(mapped_mesh.GetPointData().GetScalars())
 
     if mesh_type == "FC":
         vertices = np.array(mapped_mesh.GetPoints().GetData())
-        vertices[:, [1, 0]] = vertices[:, [0, 1]]
-        circle, z_range = get_cylinder(vertices)
-        embedded, plot_xy = get_projection_from_circle_and_vertice(vertices, circle)
+        # vertices[:, [1, 0]] = vertices[:, [0, 1]]
+        circle, x_range = get_cylinder(vertices)
+        embedded, plot_yz = get_projection_from_circle_and_vertices(vertices, circle)
 
-        return embedded[:, 0], embedded[:, 1], point_data
+        return embedded[:, 0], embedded[:, 1], thickness
     else:
-        vertice = np.array(mapped_mesh.GetPoints().GetData())
-        thickness = np.array(mapped_mesh.GetPointData().GetScalars())
+        vertices = np.array(mapped_mesh.GetPoints().GetData())
+        # thickness = np.array(mapped_mesh.GetPointData().GetScalars())
 
-        vertice_left = vertice[vertice[:, 2] < 50]
-        index_left = np.where(vertice[:, 2] < 50)[0]
+        vertice_left = vertices[vertices[:, 0] < -50]
+        index_left = np.where(vertices[:, 0] < -50)[0]
 
-        vertice_right = vertice[vertice[:, 2] >= 50]
-        index_right = np.where(vertice[:, 2] >= 50)[0]
+        vertice_right = vertices[vertices[:, 0] >= -50]
+        index_right = np.where(vertices[:, 0] >= -50)[0]
 
         embedded_left = do_linear_pca(vertice_left)
         embedded_right = do_linear_pca(vertice_right)
