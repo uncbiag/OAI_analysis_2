@@ -53,12 +53,13 @@ def into_canonical_orientation(image):
     """
     dicom_lps = itk.SpatialOrientationEnums.ValidCoordinateOrientations_ITK_COORDINATE_ORIENTATION_RAI
     dicom_ras = itk.SpatialOrientationEnums.ValidCoordinateOrientations_ITK_COORDINATE_ORIENTATION_LPI
+    dicom_pir = itk.SpatialOrientationEnums.ValidCoordinateOrientations_ITK_COORDINATE_ORIENTATION_ASL
     oriented_image = itk.orient_image_filter(
         image,
         use_image_direction=True,
         # given_coordinate_orientation=dicom_lps,
         # desired_coordinate_orientation=dicom_ras,
-        desired_coordinate_orientation=dicom_lps,
+        desired_coordinate_orientation=dicom_pir,  # atlas' orientation
     )
     return oriented_image
 
@@ -107,7 +108,7 @@ def analysis_pipeline(input_path, output_path, keep_intermediate_outputs):
 
     print("Computing cartilage thickness for the atlas")
     inner_mesh_fc_atlas, inner_mesh_tc_atlas = thickness_analysis(atlas_image,
-                                                                  output_prefix=os.path.join(output_path, "in"))
+                                                                  output_prefix=os.path.join(output_path, "atlas"))
     write_vtk_mesh(inner_mesh_fc_atlas, output_path + "/inner_mesh_fc_atlas.vtk")
     write_vtk_mesh(inner_mesh_tc_atlas, output_path + "/inner_mesh_tc_atlas.vtk")
 
@@ -131,6 +132,9 @@ def analysis_pipeline(input_path, output_path, keep_intermediate_outputs):
     print("Mapping the thickness to the atlas mesh")
     mapped_mesh_fc = mp.map_attributes(transformed_mesh_FC, inner_mesh_fc_atlas)
     mapped_mesh_tc = mp.map_attributes(transformed_mesh_TC, inner_mesh_tc_atlas)
+    if keep_intermediate_outputs:
+        write_vtk_mesh(mapped_mesh_fc, output_path + "/mapped_mesh_fc.vtk")
+        write_vtk_mesh(mapped_mesh_tc, output_path + "/mapped_mesh_tc.vtk")
 
     print("Projecting thickness to 2D")
     x, y, t = mp.project_thickness(mapped_mesh_tc, mesh_type='TC')
