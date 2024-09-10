@@ -20,6 +20,16 @@ def write_vtk_mesh(mesh, filename):
     writer.Write()
 
 
+def read_vtk_mesh(filename):
+    if filename[-4:] == ".ply":
+        reader = vtk.vtkPLYReader()
+    else:
+        reader = vtk.vtkPolyDataReader()
+    reader.SetFileName(filename)
+    reader.Update()
+    return reader.GetOutput()
+
+
 def transform_mesh(mesh, transform, filename_prefix, keep_intermediate_outputs):
     """
     Transform the input mesh using the provided transform.
@@ -34,10 +44,7 @@ def transform_mesh(mesh, transform, filename_prefix, keep_intermediate_outputs):
     # itk.meshwrite(t_mesh, filename_prefix + "_transformed.vtk", binary=True)  # does not work in 5.4 and earlier
     itk.meshwrite(t_mesh, filename_prefix + "_transformed.vtk", compression=True)
 
-    reader = vtk.vtkPolyDataReader()
-    reader.SetFileName(filename_prefix + "_transformed.vtk")
-    reader.Update()
-    transformed_mesh = reader.GetOutput()
+    transformed_mesh = read_vtk_mesh(filename_prefix + "_transformed.vtk")
 
     if keep_intermediate_outputs:
         write_vtk_mesh(mesh, filename_prefix + "_original.vtk")
@@ -45,6 +52,25 @@ def transform_mesh(mesh, transform, filename_prefix, keep_intermediate_outputs):
         os.remove(filename_prefix + "_transformed.vtk")
 
     return transformed_mesh
+
+
+def into_canonical_orientation(image):
+    """
+    Reorient the given image into the canonical orientation.
+
+    :param image: input image
+    :return: reoriented image
+    """
+    dicom_lps = itk.SpatialOrientationEnums.ValidCoordinateOrientations_ITK_COORDINATE_ORIENTATION_RAI
+    dicom_ras = itk.SpatialOrientationEnums.ValidCoordinateOrientations_ITK_COORDINATE_ORIENTATION_LPI
+    oriented_image = itk.orient_image_filter(
+        image,
+        use_image_direction=True,
+        # given_coordinate_orientation=dicom_lps,
+        # desired_coordinate_orientation=dicom_ras,
+        desired_coordinate_orientation=dicom_lps,
+    )
+    return oriented_image
 
 
 def analysis_pipeline(input_path, output_path, keep_intermediate_outputs):
@@ -55,14 +81,7 @@ def analysis_pipeline(input_path, output_path, keep_intermediate_outputs):
     :param output_path: path to the desired directory for outputs.
     """
     in_image = itk.imread(input_path, pixel_type=itk.F)
-    dicom_lps = itk.SpatialOrientationEnums.ValidCoordinateOrientations_ITK_COORDINATE_ORIENTATION_RAI
-    dicom_ras = itk.SpatialOrientationEnums.ValidCoordinateOrientations_ITK_COORDINATE_ORIENTATION_LPI
-    in_image = itk.orient_image_filter(
-        in_image,
-        # use_image_direction=True,
-        given_coordinate_orientation=dicom_lps,
-        desired_coordinate_orientation=dicom_ras,
-    )  # using identity direction for all images simplifies mesh processing
+    in_image = into_canonical_orientation(in_image)  # simplifies mesh processing
     in_image = preprocess(in_image, modality="mri")
     os.makedirs(output_path, exist_ok=True)  # also holds intermediate results
     if keep_intermediate_outputs:
