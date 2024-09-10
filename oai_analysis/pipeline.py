@@ -2,11 +2,12 @@ import os
 import pathlib
 
 import icon_registration.itk_wrapper as itk_wrapper
-import icon_registration.pretrained_models as pretrained_models
 import itk
 import matplotlib.pyplot as plt
-import mesh_processing as mp
 import vtk
+from unigradicon import preprocess, get_unigradicon
+
+import mesh_processing as mp
 from analysis_object import AnalysisObject
 
 
@@ -70,13 +71,16 @@ def analysis_pipeline(input_path, output_path, keep_intermediate_outputs):
     distance_inner_TC, distance_outer_TC = mp.get_thickness_mesh(TC_prob, mesh_type='TC')
 
     # Register the input image to the atlas
-    model = pretrained_models.OAI_knees_registration_model()
+    model = get_unigradicon()
     DATA_DIR = pathlib.Path(__file__).parent / "data"
     atlas_filename = DATA_DIR / "atlases/atlas_60_LEFT_baseline_NMI/atlas.nii.gz"
     in_image_D = in_image.astype(itk.D)
     atlas_image = itk.imread(atlas_filename, itk.D)
 
-    phi_AB, phi_BA = itk_wrapper.register_pair(model, in_image_D, atlas_image)
+    phi_AB, phi_BA = itk_wrapper.register_pair(model,
+                                               preprocess(in_image_D, modality="mri"),
+                                               preprocess(atlas_image, modality="mri"),
+                                               finetune_steps=None)  # each step takes several seconds
     if keep_intermediate_outputs:
         print("Saving registration results crashes, skipping")
         # itk.transformwrite(phi_AB, os.path.join(output_path, "resampling.tfm"))
