@@ -20,16 +20,6 @@ def write_vtk_mesh(mesh, filename):
     writer.Write()
 
 
-def read_vtk_mesh(filename):
-    if filename[-4:] == ".ply":
-        reader = vtk.vtkPLYReader()
-    else:
-        reader = vtk.vtkPolyDataReader()
-    reader.SetFileName(filename)
-    reader.Update()
-    return reader.GetOutput()
-
-
 def transform_mesh(mesh, transform, filename_prefix, keep_intermediate_outputs):
     """
     Transform the input mesh using the provided transform.
@@ -44,7 +34,7 @@ def transform_mesh(mesh, transform, filename_prefix, keep_intermediate_outputs):
     # itk.meshwrite(t_mesh, filename_prefix + "_transformed.vtk", binary=True)  # does not work in 5.4 and earlier
     itk.meshwrite(t_mesh, filename_prefix + "_transformed.vtk", compression=True)
 
-    transformed_mesh = read_vtk_mesh(filename_prefix + "_transformed.vtk")
+    transformed_mesh = mp.read_vtk_mesh(filename_prefix + "_transformed.vtk")
 
     if keep_intermediate_outputs:
         write_vtk_mesh(mesh, filename_prefix + "_original.vtk")
@@ -73,6 +63,29 @@ def into_canonical_orientation(image):
     return oriented_image
 
 
+def thickness_analysis(normalized_image, output_prefix=None):
+    """
+    Computes cartilage thickness for femur and tibia from knee MRI.
+
+    :param normalized_image:
+    :param output_prefix: If provided, writes intermediate results to files with this prefix.
+    :return: Inner part of the mesh with distance information in attributes
+    """
+    print("Segmenting the femoral and tibial cartilage")
+    obj = AnalysisObject()
+    FC_prob, TC_prob = obj.segment(normalized_image)
+    if output_prefix is not None:
+        print("Saving segmentation results")
+        itk.imwrite(FC_prob.astype(itk.F), output_prefix + "_FC_prob.nrrd", compression=True)
+        itk.imwrite(TC_prob.astype(itk.F), output_prefix + "_TC_prob.nrrd", compression=True)
+
+    print("Computing the thickness map for the meshes")
+    distance_inner_FC, distance_outer_FC = mp.get_thickness_mesh(FC_prob, mesh_type='FC')
+    distance_inner_TC, distance_outer_TC = mp.get_thickness_mesh(TC_prob, mesh_type='TC')
+
+    return distance_inner_FC, distance_inner_TC
+
+
 def analysis_pipeline(input_path, output_path, keep_intermediate_outputs):
     """
     Computes cartilage thickness for femur and tibia from knee MRI.
@@ -86,27 +99,23 @@ def analysis_pipeline(input_path, output_path, keep_intermediate_outputs):
     os.makedirs(output_path, exist_ok=True)  # also holds intermediate results
     if keep_intermediate_outputs:
         itk.imwrite(in_image, os.path.join(output_path, "in_image.nrrd"))
+    distance_inner_FC, distance_inner_TC = thickness_analysis(in_image, output_prefix=os.path.join(output_path, "in"))
 
-    print("Segmenting the femoral and tibial cartilage")
-    obj = AnalysisObject()
-    FC_prob, TC_prob = obj.segment(in_image)
-    if keep_intermediate_outputs:
-        print("Saving segmentation results")
-        itk.imwrite(FC_prob.astype(itk.F), os.path.join(output_path, "FC_prob.nrrd"), compression=True)
-        itk.imwrite(TC_prob.astype(itk.F), os.path.join(output_path, "TC_prob.nrrd"), compression=True)
+    DATA_DIR = pathlib.Path(__file__).parent / "data"
+    atlas_filename = DATA_DIR / "atlases/atlas_60_LEFT_baseline_NMI/atlas.nii.gz"
+    atlas_image = itk.imread(atlas_filename, itk.F)
 
-    print("Computing the thickness map for the meshes")
-    distance_inner_FC, distance_outer_FC = mp.get_thickness_mesh(FC_prob, mesh_type='FC')
-    distance_inner_TC, distance_outer_TC = mp.get_thickness_mesh(TC_prob, mesh_type='TC')
+    print("Computing cartilage thickness for the atlas")
+    inner_mesh_fc_atlas, inner_mesh_tc_atlas = thickness_analysis(atlas_image,
+                                                                  output_prefix=os.path.join(output_path, "in"))
+    write_vtk_mesh(inner_mesh_fc_atlas, output_path + "/inner_mesh_fc_atlas.vtk")
+    write_vtk_mesh(inner_mesh_tc_atlas, output_path + "/inner_mesh_tc_atlas.vtk")
 
     print("Registering the input image to the atlas")
     model = get_unigradicon()
-    DATA_DIR = pathlib.Path(__file__).parent / "data"
-    atlas_filename = DATA_DIR / "atlases/atlas_60_LEFT_baseline_NMI/atlas.nii.gz"
     in_image_D = in_image.astype(itk.D)
-    atlas_image = itk.imread(atlas_filename, itk.D)
-
-    phi_AB, phi_BA = itk_wrapper.register_pair(model, in_image_D, atlas_image, finetune_steps=None)
+    atlas_image_D = atlas_image.astype(itk.D)
+    phi_AB, phi_BA = itk_wrapper.register_pair(model, in_image_D, atlas_image_D, finetune_steps=None)
     if keep_intermediate_outputs:
         print("Saving registration results")
         itk.transformwrite(phi_AB, os.path.join(output_path, "resampling.tfm"))
@@ -118,16 +127,6 @@ def analysis_pipeline(input_path, output_path, keep_intermediate_outputs):
                                          keep_intermediate_outputs=keep_intermediate_outputs)
     transformed_mesh_TC = transform_mesh(distance_inner_TC, transform=phi_BA, filename_prefix=output_path + "/TC",
                                          keep_intermediate_outputs=keep_intermediate_outputs)
-
-    print("Getting inner and outer meshes for the TC and FC atlas meshes")
-    prob_fc_atlas = itk.imread(DATA_DIR / "atlases/atlas_60_LEFT_baseline_NMI/atlas_fc.nii.gz")
-    mesh_fc_atlas = mp.get_mesh(prob_fc_atlas)
-    inner_mesh_fc_atlas, outer_mesh_fc_atlas = mp.split_mesh(mesh_fc_atlas, mesh_type='FC')
-    write_vtk_mesh(inner_mesh_fc_atlas, output_path + "/inner_mesh_fc_atlas.vtk")
-    prob_tc_atlas = itk.imread(DATA_DIR / "atlases/atlas_60_LEFT_baseline_NMI/atlas_tc.nii.gz")
-    mesh_tc_atlas = mp.get_mesh(prob_tc_atlas)
-    inner_mesh_tc_atlas, outer_mesh_tc_atlas = mp.split_mesh(mesh_tc_atlas, mesh_type='TC')
-    write_vtk_mesh(inner_mesh_tc_atlas, output_path + "/inner_mesh_tc_atlas.vtk")
 
     print("Mapping the thickness to the atlas mesh")
     mapped_mesh_fc = mp.map_attributes(transformed_mesh_FC, inner_mesh_fc_atlas)

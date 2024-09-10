@@ -11,6 +11,8 @@ Sample usage for thickness computation
 Sample usage for mapping attributes/data to atlas mesh (target mesh)
     mapped_mesh = mp.map_attributes(source_mesh, target_mesh)
 """
+import os
+import tempfile
 
 import numpy as np
 from sklearn.cluster import KMeans
@@ -21,6 +23,16 @@ from vtk.util import numpy_support as ns
 from sklearn.decomposition import PCA
 
 # Helper Functions for Mesh Processing
+
+def read_vtk_mesh(filename):
+    if filename[-4:] == ".ply":
+        reader = vtk.vtkPLYReader()
+    else:
+        reader = vtk.vtkPolyDataReader()
+    reader.SetFileName(filename)
+    reader.Update()
+    return reader.GetOutput()
+
 
 # Get Centroid of all the cells
 def get_cell_centroid(mesh: itk.Mesh):
@@ -96,6 +108,16 @@ def get_itk_mesh(vtk_mesh):
         itk_mesh.SetPointData(itk.vector_container_from_array(point_data_numpy))
         itk_mesh.SetCellData(itk.vector_container_from_array(cell_data_numpy))
     return itk_mesh
+
+
+def itk_mesh_to_vtk_mesh(itk_mesh, intermediate_filename=None):
+    with tempfile.TemporaryDirectory() as tmp:
+        path = os.path.join(tmp, 'temp.vtk')
+        if intermediate_filename is None:
+            intermediate_filename = path
+        itk.meshwrite(itk_mesh, intermediate_filename, compression=True)
+        vtk_mesh = read_vtk_mesh(intermediate_filename)
+    return vtk_mesh
 
 
 # Get VTK mesh using vertices and faces array
@@ -385,10 +407,11 @@ def get_thickness_mesh(itk_image, mesh_type="FC", num_iterations=150):
     Takes as argument the type of mesh 'FC' or 'TC'.
     """
     # Get mesh from itk image
-    mesh = get_mesh(itk_image, num_iterations=150)
+    itk_mesh = get_mesh_from_probability_map(itk_image)
+    vtk_mesh = itk_mesh_to_vtk_mesh(itk_mesh)
 
     # Split the mesh into inner and outer
-    inner_mesh, outer_mesh = split_mesh(mesh, mesh_type)
+    inner_mesh, outer_mesh = split_mesh(vtk_mesh, mesh_type)
 
     # Get the distance between inner and outer mesh
     distance_inner, distance_outer = get_distance(inner_mesh, outer_mesh)
