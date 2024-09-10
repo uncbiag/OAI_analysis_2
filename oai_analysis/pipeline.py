@@ -55,6 +55,14 @@ def analysis_pipeline(input_path, output_path, keep_intermediate_outputs):
     :param output_path: path to the desired directory for outputs.
     """
     in_image = itk.imread(input_path, pixel_type=itk.F)
+    dicom_lps = itk.SpatialOrientationEnums.ValidCoordinateOrientations_ITK_COORDINATE_ORIENTATION_RAI
+    dicom_ras = itk.SpatialOrientationEnums.ValidCoordinateOrientations_ITK_COORDINATE_ORIENTATION_LPI
+    in_image = itk.orient_image_filter(
+        in_image,
+        # use_image_direction=True,
+        given_coordinate_orientation=dicom_lps,
+        desired_coordinate_orientation=dicom_ras,
+    )  # using identity direction for all images simplifies mesh processing
     in_image = preprocess(in_image, modality="mri")
     os.makedirs(output_path, exist_ok=True)  # also holds intermediate results
     if keep_intermediate_outputs:
