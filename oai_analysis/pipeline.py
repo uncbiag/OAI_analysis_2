@@ -106,11 +106,8 @@ def analysis_pipeline(input_path, output_path, keep_intermediate_outputs):
     atlas_filename = DATA_DIR / "atlases/atlas_60_LEFT_baseline_NMI/atlas.nii.gz"
     atlas_image = itk.imread(atlas_filename, itk.F)
 
-    print("Computing cartilage thickness for the atlas")
-    inner_mesh_fc_atlas, inner_mesh_tc_atlas = thickness_analysis(atlas_image,
-                                                                  output_prefix=os.path.join(output_path, "atlas"))
-    write_vtk_mesh(inner_mesh_fc_atlas, output_path + "/inner_mesh_fc_atlas.vtk")
-    write_vtk_mesh(inner_mesh_tc_atlas, output_path + "/inner_mesh_tc_atlas.vtk")
+    inner_mesh_fc_atlas = mp.read_vtk_mesh(DATA_DIR / "atlases/atlas_60_LEFT_baseline_NMI/atlas_FC_inner_mesh_LPS.ply")
+    inner_mesh_tc_atlas = mp.read_vtk_mesh(DATA_DIR / "atlases/atlas_60_LEFT_baseline_NMI/atlas_TC_inner_mesh_LPS.ply")
 
     print("Registering the input image to the atlas")
     model = get_unigradicon()

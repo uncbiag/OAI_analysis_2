@@ -25,7 +25,7 @@ from sklearn.decomposition import PCA
 # Helper Functions for Mesh Processing
 
 def read_vtk_mesh(filename):
-    if filename[-4:] == ".ply":
+    if str(filename)[-4:] == ".ply":
         reader = vtk.vtkPLYReader()
     else:
         reader = vtk.vtkPolyDataReader()
