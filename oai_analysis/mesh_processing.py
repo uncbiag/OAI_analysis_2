@@ -467,35 +467,21 @@ def compute_least_square_circle(x, y):
     return center_2b, R_2b
 
 
-# For getting the cylinder
-def get_cylinder(vertices):
-    y, z = vertices[:, 1], vertices[:, 2]
-    x_min, x_max = np.min(vertices[:, 0]), np.max(vertices[:, 0])
-    center, r = compute_least_square_circle(y, z)
-    return (center, r), (x_min, x_max)
-
-
 # Project the vertices to the cylinder.
 def get_projection_from_circle_and_vertices(vertices, circle):
-    def equal_scale(input, ref):
-        input = (input - np.min(input)) / (np.max(input) - np.min(input))
-        input = input * (np.max(ref) - np.min(ref)) * 1.5 + np.min(ref)
-        return input
-
     center, r = circle
-    x, y = vertices[:, 0], vertices[:, 1]
-    radian = np.arctan2(y - center[1], x - center[0])
+    y, z = vertices[:, 1], vertices[:, 2]
+    radian = np.arctan2(z - center[1], y - center[0])
 
     embedded = np.zeros([len(vertices), 2])
     embedded[:, 0] = radian
     embedded[:, 1] = vertices[:, 0]
 
-    plot_xy = np.zeros_like(embedded)
-    angle = radian / np.pi * 180
-    angle = equal_scale(angle, vertices[:, 0])
-    plot_xy[:, 0] = angle
-    plot_xy[:, 1] = vertices[:, 0]
-    return embedded, plot_xy
+    plot_yz = np.zeros_like(embedded)
+    angle = (90 - np.rad2deg(radian)) % 360  # shift and wrap around to avoid plotting discontinuity
+    plot_yz[:, 0] = angle
+    plot_yz[:, 1] = vertices[:, 0]
+    return embedded, plot_yz
 
 
 # Projects the thickness in mapped mesh to 2D
@@ -509,23 +495,14 @@ def project_thickness(mapped_mesh, mesh_type="FC", embedded=None):
         embedded = kpca.fit_transform(vertex)
         return embedded
 
-    def rotate_embedded(embedded, angle):
-        theta = (angle / 180.0) * np.pi
-        rotMatrix = np.array(
-            [[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]]
-        )
-        embedded = c = np.dot(embedded, rotMatrix)
-        return embedded
-
     thickness = np.array(mapped_mesh.GetPointData().GetScalars())
 
     if mesh_type == "FC":
         vertices = np.array(mapped_mesh.GetPoints().GetData())
-        # vertices[:, [1, 0]] = vertices[:, [0, 1]]
-        circle, x_range = get_cylinder(vertices)
+        circle = compute_least_square_circle(vertices[:, 1], vertices[:, 2])
         embedded, plot_yz = get_projection_from_circle_and_vertices(vertices, circle)
 
-        return embedded[:, 0], embedded[:, 1], thickness
+        return plot_yz[:, 0], plot_yz[:, 1], thickness
     else:
         vertices = np.array(mapped_mesh.GetPoints().GetData())
         # thickness = np.array(mapped_mesh.GetPointData().GetScalars())
@@ -538,9 +515,6 @@ def project_thickness(mapped_mesh, mesh_type="FC", embedded=None):
 
         embedded_left = do_linear_pca(vertice_left)
         embedded_right = do_linear_pca(vertice_right)
-
-        embedded_left = rotate_embedded(embedded_left, -50)
-        embedded_right = rotate_embedded(embedded_right, -160)
 
         embedded_right[:, 0] = -embedded_right[:, 0]  # flip x
 

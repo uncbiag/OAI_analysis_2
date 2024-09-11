@@ -87,6 +87,25 @@ def thickness_analysis(normalized_image, output_prefix=None):
     return distance_inner_FC, distance_inner_TC
 
 
+def thickness_3d_to_2d(mapped_mesh, mesh_type: str, output_filename):
+    x, y, t = mp.project_thickness(mapped_mesh, mesh_type=mesh_type)
+    if mesh_type == 'FC':
+        fig_size = (10, 6)
+        aspect = 2.0
+    else:
+        fig_size = (5, 6)
+        aspect = 1.0
+    fig = plt.figure(figsize=fig_size)
+    ax = plt.Axes(fig, [0.03, 0.03, 0.94, 0.94])
+    ax.set_axis_off()
+    ax.axes.set_aspect(aspect, anchor='W')
+    s = ax.scatter(x, y, c=t, vmin=0, vmax=4)
+    fig.add_axes(ax)
+    fig.colorbar(s).set_label('Thickness ' + mesh_type.upper(), size=15)
+    fig.savefig(output_filename, dpi=300)
+    plt.close(fig)
+
+
 def analysis_pipeline(input_path, output_path, keep_intermediate_outputs):
     """
     Computes cartilage thickness for femur and tibia from knee MRI.
@@ -134,22 +153,8 @@ def analysis_pipeline(input_path, output_path, keep_intermediate_outputs):
         write_vtk_mesh(mapped_mesh_tc, output_path + "/mapped_mesh_tc.vtk")
 
     print("Projecting thickness to 2D")
-    x, y, t = mp.project_thickness(mapped_mesh_tc, mesh_type='TC')
-    s = plt.scatter(x, y, c=t, vmin=0, vmax=4)
-    cb = plt.colorbar(s)
-    cb.set_label('Thickness TC')
-    plt.axis('off')
-    plt.draw()
-    plt.savefig(output_path + '/thickness_TC.png')
-
-    x, y, t = mp.project_thickness(mapped_mesh_fc, mesh_type='FC')
-    plt.figure(figsize=(8, 6))
-    s = plt.scatter(x, y, c=t)
-    cb = plt.colorbar(s)
-    cb.set_label('Thickness FC', size=15)
-    plt.axis('off')
-    plt.draw()
-    plt.savefig(output_path + '/thickness_FC.png')
+    thickness_3d_to_2d(mapped_mesh_fc, mesh_type='FC', output_filename=output_path + '/thickness_FC.png')
+    thickness_3d_to_2d(mapped_mesh_tc, mesh_type='TC', output_filename=output_path + '/thickness_TC.png')
 
 
 if __name__ == "__main__":
@@ -163,4 +168,12 @@ if __name__ == "__main__":
 
     for i, case in enumerate(test_cases):
         print(f"\nProcessing case {case}")
-        analysis_pipeline(case, output_path=f"./OAI_results/case_{i:03d}", keep_intermediate_outputs=True)
+        output_path = f"./OAI_results/case_{i:03d}"
+        debugging_plots = False  # skip processing so plot options can be quickly experimented with
+        if debugging_plots:
+            mapped_mesh_fc = mp.read_vtk_mesh(output_path + "/mapped_mesh_fc.vtk")
+            mapped_mesh_tc = mp.read_vtk_mesh(output_path + "/mapped_mesh_tc.vtk")
+            thickness_3d_to_2d(mapped_mesh_fc, mesh_type='FC', output_filename=output_path + '/thickness_FC.png')
+            thickness_3d_to_2d(mapped_mesh_tc, mesh_type='TC', output_filename=output_path + '/thickness_TC.png')
+        else:
+            analysis_pipeline(case, output_path, keep_intermediate_outputs=True)
