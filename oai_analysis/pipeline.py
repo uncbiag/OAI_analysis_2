@@ -91,14 +91,12 @@ def thickness_3d_to_2d(mapped_mesh, mesh_type: str, output_filename):
     x, y, t = mp.project_thickness(mapped_mesh, mesh_type=mesh_type)
     if mesh_type == 'FC':
         fig_size = (10, 6)
-        aspect = 2.0
     else:
         fig_size = (5, 6)
-        aspect = 1.0
     fig = plt.figure(figsize=fig_size)
     ax = plt.Axes(fig, [0.03, 0.03, 0.94, 0.94])
     ax.set_axis_off()
-    ax.axes.set_aspect(aspect, anchor='W')
+    ax.axes.set_aspect(1.0, anchor='W')
     s = ax.scatter(x, y, c=t, vmin=0, vmax=4)
     fig.add_axes(ax)
     fig.colorbar(s).set_label('Thickness ' + mesh_type.upper(), size=15)

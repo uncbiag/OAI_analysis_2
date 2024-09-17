@@ -478,8 +478,8 @@ def get_projection_from_circle_and_vertices(vertices, circle):
     embedded[:, 1] = vertices[:, 0]
 
     plot_yz = np.zeros_like(embedded)
-    angle = (90 - np.rad2deg(radian)) % 360  # shift and wrap around to avoid plotting discontinuity
-    plot_yz[:, 0] = angle
+    angle = (np.pi / 2 - radian) % (2*np.pi)  # shift and wrap around to avoid plotting discontinuity
+    plot_yz[:, 0] = angle * r  # convert from radians to millimeters
     plot_yz[:, 1] = vertices[:, 0]
     return embedded, plot_yz
 
