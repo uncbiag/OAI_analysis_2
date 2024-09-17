@@ -75,14 +75,17 @@ def thickness_analysis(normalized_image, output_prefix=None):
     print("Segmenting the femoral and tibial cartilage")
     obj = AnalysisObject()
     FC_prob, TC_prob = obj.segment(normalized_image)
-    if output_prefix is not None:
-        print("Saving segmentation results")
-        itk.imwrite(FC_prob.astype(itk.F), output_prefix + "_FC_prob.nrrd", compression=True)
-        itk.imwrite(TC_prob.astype(itk.F), output_prefix + "_TC_prob.nrrd", compression=True)
 
     print("Computing the thickness map for the meshes")
     distance_inner_FC, distance_outer_FC = mp.get_thickness_mesh(FC_prob, mesh_type='FC')
     distance_inner_TC, distance_outer_TC = mp.get_thickness_mesh(TC_prob, mesh_type='TC')
+
+    if output_prefix is not None:
+        print("Saving intermediate results")
+        itk.imwrite(FC_prob.astype(itk.F), output_prefix + "_FC_prob.nrrd", compression=True)
+        itk.imwrite(TC_prob.astype(itk.F), output_prefix + "_TC_prob.nrrd", compression=True)
+        write_vtk_mesh(distance_outer_FC, output_prefix + "_FC_outer.vtk")
+        write_vtk_mesh(distance_outer_TC, output_prefix + "_TC_outer.vtk")
 
     return distance_inner_FC, distance_inner_TC
 
