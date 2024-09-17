@@ -97,7 +97,7 @@ def thickness_3d_to_2d(mapped_mesh, mesh_type: str, output_filename):
     ax = plt.Axes(fig, [0.03, 0.03, 0.94, 0.94])
     ax.set_axis_off()
     ax.axes.set_aspect(1.0, anchor='W')
-    s = ax.scatter(x, y, c=t, vmin=0, vmax=4)
+    s = ax.scatter(x, y, s=8, c=t, vmin=0, vmax=4)
     fig.add_axes(ax)
     fig.colorbar(s).set_label('Thickness ' + mesh_type.upper(), size=15)
     fig.savefig(output_filename, dpi=300)
