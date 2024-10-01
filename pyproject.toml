@@ -30,6 +30,7 @@ dependencies = [
   "torch",
   "itk",
   "itk-cuberille",
+  "itk-parabolicmorphology",
   "trimesh",
   "vtk",
   "icon_registration",

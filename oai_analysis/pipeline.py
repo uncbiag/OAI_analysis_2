@@ -1,15 +1,18 @@
 import os
 import pathlib
 
+import numpy as np
 import icon_registration.itk_wrapper as itk_wrapper
 import itk
 import vtk
+from vtk import vtkPointLocator, vtkKdTreePointLocator
+from vtk.util.numpy_support import numpy_to_vtk
 from unigradicon import preprocess, get_unigradicon
-
 
 import mesh_processing as mp
 from analysis_object import AnalysisObject
 from cartilage_shape_processing import thickness_3d_to_2d
+from thickness_computation import compute_thickness
 
 DATA_DIR = pathlib.Path(__file__).parent / "data"
 
@@ -67,32 +70,27 @@ def into_canonical_orientation(image):
     return oriented_image
 
 
-def thickness_analysis(normalized_image, output_prefix=None):
-    """
-    Computes cartilage thickness for femur and tibia from knee MRI.
+def project_distance_to_atlas(distance_image, transformed_atlas_mesh):
+    image_np = itk.array_view_from_image(distance_image)
+    indices = np.argwhere(image_np)
 
-    :param normalized_image:
-    :param output_prefix: If provided, writes intermediate results to files with this prefix.
-    :return: Inner part of the mesh with distance information in attributes
-    """
-    print("Segmenting the femoral and tibial cartilage")
-    obj = AnalysisObject()
-    FC_prob, TC_prob = obj.segment(normalized_image)
+    locator = vtkPointLocator()  # vtkKdTreePointLocator
+    locator.SetDataSet(transformed_atlas_mesh)
+    locator.BuildLocator()
 
-    print("Computing the thickness map for the meshes")
-    distance_inner_FC, distance_outer_FC = mp.get_thickness_mesh(FC_prob, mesh_type='FC')
-    distance_inner_TC, distance_outer_TC = mp.get_thickness_mesh(TC_prob, mesh_type='TC')
+    thickness = np.zeros(transformed_atlas_mesh.GetNumberOfPoints(), dtype=np.float32)
 
-    if output_prefix is not None:
-        print("Saving intermediate results")
-        itk.imwrite(FC_prob.astype(itk.F), output_prefix + "_FC_prob.nrrd", compression=True)
-        itk.imwrite(TC_prob.astype(itk.F), output_prefix + "_TC_prob.nrrd", compression=True)
-        write_vtk_mesh(distance_outer_FC, output_prefix + "_FC_outer.vtk")
-        write_vtk_mesh(distance_outer_TC, output_prefix + "_TC_outer.vtk")
+    for index in indices:
+        itk_index = index[::-1].tolist()  # ITK is IJK, numpy is KJI
+        p = distance_image.TransformIndexToPhysicalPoint(itk_index)
+        closest_index = locator.FindClosestPoint(p)
+        pixel_thickness = distance_image.GetPixel(itk_index)
+        thickness[closest_index] = max(pixel_thickness, thickness[closest_index])  # keep thickest projection
 
-    return distance_inner_FC, distance_inner_TC
-
-
+    vtk_array = numpy_to_vtk(thickness, deep=True, array_type=vtk.VTK_FLOAT)
+    vtk_array.SetName("vertex_thickness")
+    transformed_atlas_mesh.GetPointData().AddArray(vtk_array)
+    return transformed_atlas_mesh
 
 def analysis_pipeline(input_path, output_path, keep_intermediate_outputs):
     """
@@ -107,7 +105,18 @@ def analysis_pipeline(input_path, output_path, keep_intermediate_outputs):
     os.makedirs(output_path, exist_ok=True)  # also holds intermediate results
     if keep_intermediate_outputs:
         itk.imwrite(in_image, os.path.join(output_path, "in_image.nrrd"))
-    distance_inner_FC, distance_inner_TC = thickness_analysis(in_image, output_prefix=os.path.join(output_path, "in"))
+
+    print("Segmenting the cartilage")
+    obj = AnalysisObject()
+    FC_prob, TC_prob = obj.segment(in_image)
+
+    fc_thickness_image, fc_distance = compute_thickness(FC_prob)
+    tc_thickness_image, tc_distance = compute_thickness(TC_prob)
+    if keep_intermediate_outputs:
+        itk.imwrite(fc_thickness_image, os.path.join(output_path, "fc_thickness_image.nrrd"), compression=True)
+        itk.imwrite(tc_thickness_image, os.path.join(output_path, "tc_thickness_image.nrrd"), compression=True)
+        itk.imwrite(fc_distance, os.path.join(output_path, "fc_distance.nrrd"), compression=True)
+        itk.imwrite(tc_distance, os.path.join(output_path, "tc_distance.nrrd"), compression=True)
 
     atlas_filename = DATA_DIR / "atlases/atlas_60_LEFT_baseline_NMI/atlas.nii.gz"
     atlas_image = itk.imread(atlas_filename, itk.F)
@@ -129,14 +138,16 @@ def analysis_pipeline(input_path, output_path, keep_intermediate_outputs):
 
     print("Transforming the thickness measurements to the atlas space")
     # we use modelling transform, which is the inverse of the image resampling transform
-    transformed_mesh_FC = transform_mesh(distance_inner_FC, transform=phi_BA, filename_prefix=output_path + "/FC",
-                                         keep_intermediate_outputs=keep_intermediate_outputs)
-    transformed_mesh_TC = transform_mesh(distance_inner_TC, transform=phi_BA, filename_prefix=output_path + "/TC",
-                                         keep_intermediate_outputs=keep_intermediate_outputs)
+    transformed_atlas_mesh_FC = transform_mesh(
+        inner_mesh_fc_atlas, transform=phi_AB, filename_prefix=output_path + "/FC_atlas",
+        keep_intermediate_outputs=keep_intermediate_outputs)
+    transformed_atlas_mesh_TC = transform_mesh(
+        inner_mesh_tc_atlas, transform=phi_AB, filename_prefix=output_path + "/TC_atlas",
+        keep_intermediate_outputs=keep_intermediate_outputs)
 
     print("Mapping the thickness to the atlas mesh")
-    mapped_mesh_fc = mp.map_attributes(transformed_mesh_FC, inner_mesh_fc_atlas)
-    mapped_mesh_tc = mp.map_attributes(transformed_mesh_TC, inner_mesh_tc_atlas)
+    mapped_mesh_fc = project_distance_to_atlas(fc_distance, transformed_atlas_mesh_FC)
+    mapped_mesh_tc = project_distance_to_atlas(tc_distance, transformed_atlas_mesh_TC)
     if keep_intermediate_outputs:
         write_vtk_mesh(mapped_mesh_fc, output_path + "/mapped_mesh_fc.vtk")
         write_vtk_mesh(mapped_mesh_tc, output_path + "/mapped_mesh_tc.vtk")
