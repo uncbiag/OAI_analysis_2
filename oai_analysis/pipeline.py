@@ -3,12 +3,15 @@ import pathlib
 
 import icon_registration.itk_wrapper as itk_wrapper
 import itk
-import matplotlib.pyplot as plt
 import vtk
 from unigradicon import preprocess, get_unigradicon
 
+
 import mesh_processing as mp
 from analysis_object import AnalysisObject
+from cartilage_shape_processing import thickness_3d_to_2d
+
+DATA_DIR = pathlib.Path(__file__).parent / "data"
 
 
 def write_vtk_mesh(mesh, filename):
@@ -90,22 +93,6 @@ def thickness_analysis(normalized_image, output_prefix=None):
     return distance_inner_FC, distance_inner_TC
 
 
-def thickness_3d_to_2d(mapped_mesh, mesh_type: str, output_filename):
-    x, y, t = mp.project_thickness(mapped_mesh, mesh_type=mesh_type)
-    if mesh_type == 'FC':
-        fig_size = (10, 6)
-    else:
-        fig_size = (5, 6)
-    fig = plt.figure(figsize=fig_size)
-    ax = plt.Axes(fig, [0.03, 0.03, 0.94, 0.94])
-    ax.set_axis_off()
-    ax.axes.set_aspect(1.0, anchor='W')
-    s = ax.scatter(x, y, s=8, c=t, vmin=0, vmax=4)
-    fig.add_axes(ax)
-    fig.colorbar(s).set_label('Thickness ' + mesh_type.upper(), size=15)
-    fig.savefig(output_filename, dpi=300)
-    plt.close(fig)
-
 
 def analysis_pipeline(input_path, output_path, keep_intermediate_outputs):
     """
@@ -122,7 +109,6 @@ def analysis_pipeline(input_path, output_path, keep_intermediate_outputs):
         itk.imwrite(in_image, os.path.join(output_path, "in_image.nrrd"))
     distance_inner_FC, distance_inner_TC = thickness_analysis(in_image, output_prefix=os.path.join(output_path, "in"))
 
-    DATA_DIR = pathlib.Path(__file__).parent / "data"
     atlas_filename = DATA_DIR / "atlases/atlas_60_LEFT_baseline_NMI/atlas.nii.gz"
     atlas_image = itk.imread(atlas_filename, itk.F)
 
@@ -156,8 +142,8 @@ def analysis_pipeline(input_path, output_path, keep_intermediate_outputs):
         write_vtk_mesh(mapped_mesh_tc, output_path + "/mapped_mesh_tc.vtk")
 
     print("Projecting thickness to 2D")
-    thickness_3d_to_2d(mapped_mesh_fc, mesh_type='FC', output_filename=output_path + '/thickness_FC.png')
-    thickness_3d_to_2d(mapped_mesh_tc, mesh_type='TC', output_filename=output_path + '/thickness_TC.png')
+    thickness_3d_to_2d(mapped_mesh_fc, mesh_type='FC', output_filename=output_path + '/thickness_FC')
+    thickness_3d_to_2d(mapped_mesh_tc, mesh_type='TC', output_filename=output_path + '/thickness_TC')
 
 
 if __name__ == "__main__":
