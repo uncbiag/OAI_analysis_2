@@ -11,6 +11,8 @@ Sample usage for thickness computation
 Sample usage for mapping attributes/data to atlas mesh (target mesh)
     mapped_mesh = mp.map_attributes(source_mesh, target_mesh)
 """
+import os
+import tempfile
 
 import numpy as np
 from sklearn.cluster import KMeans
@@ -21,6 +23,16 @@ from vtk.util import numpy_support as ns
 from sklearn.decomposition import PCA
 
 # Helper Functions for Mesh Processing
+
+def read_vtk_mesh(filename):
+    if str(filename)[-4:] == ".ply":
+        reader = vtk.vtkPLYReader()
+    else:
+        reader = vtk.vtkPolyDataReader()
+    reader.SetFileName(filename)
+    reader.Update()
+    return reader.GetOutput()
+
 
 # Get Centroid of all the cells
 def get_cell_centroid(mesh: itk.Mesh):
@@ -96,6 +108,16 @@ def get_itk_mesh(vtk_mesh):
         itk_mesh.SetPointData(itk.vector_container_from_array(point_data_numpy))
         itk_mesh.SetCellData(itk.vector_container_from_array(cell_data_numpy))
     return itk_mesh
+
+
+def itk_mesh_to_vtk_mesh(itk_mesh, intermediate_filename=None):
+    with tempfile.TemporaryDirectory() as tmp:
+        path = os.path.join(tmp, 'temp.vtk')
+        if intermediate_filename is None:
+            intermediate_filename = path
+        itk.meshwrite(itk_mesh, intermediate_filename, compression=True)
+        vtk_mesh = read_vtk_mesh(intermediate_filename)
+    return vtk_mesh
 
 
 # Get VTK mesh using vertices and faces array
@@ -330,7 +352,7 @@ def get_mesh(itk_image, num_iterations=150):
 
     # Obtain the mesh from Probability maps using Marching Cubes
     verts, faces, normals, values = skimage.measure.marching_cubes(
-        img_array, level=0.5, spacing=spacing, step_size=1, gradient_direction="ascent"
+        img_array, level=None, spacing=spacing, step_size=1, gradient_direction="ascent"
     )
 
     mesh = get_vtk_mesh(verts, faces)
@@ -385,10 +407,11 @@ def get_thickness_mesh(itk_image, mesh_type="FC", num_iterations=150):
     Takes as argument the type of mesh 'FC' or 'TC'.
     """
     # Get mesh from itk image
-    mesh = get_mesh(itk_image, num_iterations=150)
+    itk_mesh = get_mesh_from_probability_map(itk_image)
+    vtk_mesh = itk_mesh_to_vtk_mesh(itk_mesh)
 
     # Split the mesh into inner and outer
-    inner_mesh, outer_mesh = split_mesh(mesh, mesh_type)
+    inner_mesh, outer_mesh = split_mesh(vtk_mesh, mesh_type)
 
     # Get the distance between inner and outer mesh
     distance_inner, distance_outer = get_distance(inner_mesh, outer_mesh)
@@ -444,80 +467,54 @@ def compute_least_square_circle(x, y):
     return center_2b, R_2b
 
 
-# For getting the cylinder
-def get_cylinder(vertice):
-    x, y = vertice[:, 0], vertice[:, 1]
-    z_min, z_max = np.min(vertice[:, 2]), np.max(vertice[:, 2])
-    center, r = compute_least_square_circle(x, y)
-    return (center, r), (z_min, z_max)
-
-
 # Project the vertices to the cylinder.
-def get_projection_from_circle_and_vertice(vertice, circle):
-    def equal_scale(input, ref):
-        input = (input - np.min(input)) / (np.max(input) - np.min(input))
-        input = input * (np.max(ref) - np.min(ref)) * 1.5 + np.min(ref)
-        return input
-
+def get_projection_from_circle_and_vertices(vertices, circle):
     center, r = circle
-    x, y = vertice[:, 0], vertice[:, 1]
-    radian = np.arctan2(y - center[1], x - center[0])
+    y, z = vertices[:, 1], vertices[:, 2]
+    radian = np.arctan2(z - center[1], y - center[0])
 
-    embedded = np.zeros([len(vertice), 2])
+    embedded = np.zeros([len(vertices), 2])
     embedded[:, 0] = radian
-    embedded[:, 1] = vertice[:, 2]
+    embedded[:, 1] = vertices[:, 0]
 
-    plot_xy = np.zeros_like(embedded)
-    angle = radian / np.pi * 180
-    angle = equal_scale(angle, vertice[:, 2])
-    plot_xy[:, 0] = angle
-    plot_xy[:, 1] = vertice[:, 2]
-    return embedded, plot_xy
+    plot_yz = np.zeros_like(embedded)
+    angle = (np.pi / 2 - radian) % (2*np.pi)  # shift and wrap around to avoid plotting discontinuity
+    plot_yz[:, 0] = angle * r  # convert from radians to millimeters
+    plot_yz[:, 1] = -vertices[:, 0]
+    return embedded, plot_yz
 
 
 # Projects the thickness in mapped mesh to 2D
 # Takes as arugment the projected points (embedded), if not given then re-uses the
 # already transformed points in the atlas mesh for the given mesh type.
 def project_thickness(mapped_mesh, mesh_type="FC", embedded=None):
-    def do_linear_pca(vertice, dim=3.0):
+    def do_linear_pca(vertex, dim=3):
         from sklearn.decomposition import KernelPCA
 
         kpca = KernelPCA(n_components=2, degree=dim, n_jobs=None)
-        embedded = kpca.fit_transform(vertice)
+        embedded = kpca.fit_transform(vertex)
         return embedded
 
-    def rotate_embedded(embedded, angle):
-        theta = (angle / 180.0) * np.pi
-        rotMatrix = np.array(
-            [[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]]
-        )
-        embedded = c = np.dot(embedded, rotMatrix)
-        return embedded
-
-    point_data = np.array(mapped_mesh.GetPointData().GetScalars())
+    thickness = np.array(mapped_mesh.GetPointData().GetScalars())
 
     if mesh_type == "FC":
         vertices = np.array(mapped_mesh.GetPoints().GetData())
-        vertices[:, [1, 0]] = vertices[:, [0, 1]]
-        circle, z_range = get_cylinder(vertices)
-        embedded, plot_xy = get_projection_from_circle_and_vertice(vertices, circle)
+        circle = compute_least_square_circle(vertices[:, 1], vertices[:, 2])
+        embedded, plot_yz = get_projection_from_circle_and_vertices(vertices, circle)
 
-        return embedded[:, 0], embedded[:, 1], point_data
+        return plot_yz[:, 0], plot_yz[:, 1], thickness
     else:
-        vertice = np.array(mapped_mesh.GetPoints().GetData())
-        thickness = np.array(mapped_mesh.GetPointData().GetScalars())
+        vertices = np.array(mapped_mesh.GetPoints().GetData())
+        # thickness = np.array(mapped_mesh.GetPointData().GetScalars())
 
-        vertice_left = vertice[vertice[:, 2] < 50]
-        index_left = np.where(vertice[:, 2] < 50)[0]
+        vertice_left = vertices[vertices[:, 0] < -50]
+        index_left = np.where(vertices[:, 0] < -50)[0]
 
-        vertice_right = vertice[vertice[:, 2] >= 50]
-        index_right = np.where(vertice[:, 2] >= 50)[0]
+        vertice_right = vertices[vertices[:, 0] >= -50]
+        index_right = np.where(vertices[:, 0] >= -50)[0]
 
         embedded_left = do_linear_pca(vertice_left)
         embedded_right = do_linear_pca(vertice_right)
-
-        embedded_left = rotate_embedded(embedded_left, -50)
-        embedded_right = rotate_embedded(embedded_right, -160)
 
         embedded_right[:, 0] = -embedded_right[:, 0]  # flip x
 
