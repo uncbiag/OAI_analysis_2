@@ -70,27 +70,18 @@ def into_canonical_orientation(image):
     return oriented_image
 
 
-def project_distance_to_atlas(distance_image, transformed_atlas_mesh):
-    image_np = itk.array_view_from_image(distance_image)
-    indices = np.argwhere(image_np)
-
-    locator = vtkPointLocator()  # vtkKdTreePointLocator
-    locator.SetDataSet(transformed_atlas_mesh)
-    locator.BuildLocator()
-
-    thickness = np.zeros(transformed_atlas_mesh.GetNumberOfPoints(), dtype=np.float32)
-
-    for index in indices:
-        itk_index = index[::-1].tolist()  # ITK is IJK, numpy is KJI
-        p = distance_image.TransformIndexToPhysicalPoint(itk_index)
-        closest_index = locator.FindClosestPoint(p)
-        pixel_thickness = distance_image.GetPixel(itk_index) * 2  # distance from mask edge is half of the thickness
-        thickness[closest_index] = max(pixel_thickness, thickness[closest_index])  # keep thickest projection
+def project_distance_to_atlas(thickness_image, atlas_mesh):
+    num_points = atlas_mesh.GetNumberOfPoints()
+    thickness = np.zeros(num_points, dtype=np.float32)
+    for i in range(num_points):
+        point = atlas_mesh.GetPoint(i)
+        image_index = thickness_image.TransformPhysicalPointToIndex(point)
+        thickness[i] = thickness_image.GetPixel(image_index)
 
     vtk_array = numpy_to_vtk(thickness, deep=True, array_type=vtk.VTK_FLOAT)
     vtk_array.SetName("vertex_thickness")
-    transformed_atlas_mesh.GetPointData().AddArray(vtk_array)
-    return transformed_atlas_mesh
+    atlas_mesh.GetPointData().AddArray(vtk_array)
+    return atlas_mesh
 
 
 def analysis_pipeline(input_path, output_path, keep_intermediate_outputs):
@@ -110,6 +101,9 @@ def analysis_pipeline(input_path, output_path, keep_intermediate_outputs):
     print("Segmenting the cartilage")
     obj = AnalysisObject()
     FC_prob, TC_prob = obj.segment(in_image)
+    if keep_intermediate_outputs:
+        itk.imwrite(FC_prob, os.path.join(output_path, "FC_prob.nrrd"))
+        itk.imwrite(TC_prob, os.path.join(output_path, "TC_prob.nrrd"))
 
     fc_thickness_image, fc_distance = compute_thickness(FC_prob)
     tc_thickness_image, tc_distance = compute_thickness(TC_prob)
@@ -138,19 +132,19 @@ def analysis_pipeline(input_path, output_path, keep_intermediate_outputs):
         itk.transformwrite(phi_BA, os.path.join(output_path, "modelling.tfm"))
 
     print("Transforming the thickness measurements to the atlas space")
-    transformed_fc_distance = itk.resample_image_filter(
-        fc_distance, transform=phi_AB, reference_image=atlas_image, use_reference_image=True)
-    transformed_tc_distance = itk.resample_image_filter(
-        tc_distance, transform=phi_AB, reference_image=atlas_image, use_reference_image=True)
+    transformed_fc_thickness = itk.resample_image_filter(
+        fc_thickness_image, transform=phi_AB, reference_image=atlas_image, use_reference_image=True)
+    transformed_tc_thickness = itk.resample_image_filter(
+        tc_thickness_image, transform=phi_AB, reference_image=atlas_image, use_reference_image=True)
     if keep_intermediate_outputs:
-        itk.imwrite(transformed_fc_distance,
-                    os.path.join(output_path, "transformed_fc_distance.nrrd"), compression=True)
-        itk.imwrite(transformed_tc_distance,
-                    os.path.join(output_path, "transformed_tc_distance.nrrd"), compression=True)
+        itk.imwrite(transformed_fc_thickness,
+                    os.path.join(output_path, "transformed_fc_thickness.nrrd"), compression=True)
+        itk.imwrite(transformed_tc_thickness,
+                    os.path.join(output_path, "transformed_tc_thickness.nrrd"), compression=True)
 
     print("Mapping the thickness to the atlas mesh")
-    mapped_mesh_fc = project_distance_to_atlas(transformed_fc_distance, inner_mesh_fc_atlas)
-    mapped_mesh_tc = project_distance_to_atlas(transformed_tc_distance, inner_mesh_tc_atlas)
+    mapped_mesh_fc = project_distance_to_atlas(transformed_fc_thickness, inner_mesh_fc_atlas)
+    mapped_mesh_tc = project_distance_to_atlas(transformed_tc_thickness, inner_mesh_tc_atlas)
     if keep_intermediate_outputs:
         write_vtk_mesh(mapped_mesh_fc, output_path + "/mapped_mesh_fc.vtk")
         write_vtk_mesh(mapped_mesh_tc, output_path + "/mapped_mesh_tc.vtk")
@@ -172,11 +166,4 @@ if __name__ == "__main__":
     for i, case in enumerate(test_cases):
         print(f"\nProcessing case {case}")
         output_path = f"./OAI_results/case_{i:03d}"
-        debugging_plots = False  # skip processing so plot options can be quickly experimented with
-        if debugging_plots:
-            mapped_mesh_fc = mp.read_vtk_mesh(output_path + "/mapped_mesh_fc.vtk")
-            mapped_mesh_tc = mp.read_vtk_mesh(output_path + "/mapped_mesh_tc.vtk")
-            thickness_3d_to_2d(mapped_mesh_fc, mesh_type='FC', output_filename=output_path + '/thickness_FC.png')
-            thickness_3d_to_2d(mapped_mesh_tc, mesh_type='TC', output_filename=output_path + '/thickness_TC.png')
-        else:
-            analysis_pipeline(case, output_path, keep_intermediate_outputs=True)
+        analysis_pipeline(case, output_path, keep_intermediate_outputs=True)
