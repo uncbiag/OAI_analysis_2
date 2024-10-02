@@ -105,7 +105,7 @@ def map_thickness_to_2D_projection(atlas_mesh_with_thickness, atlas_2d_map_file=
     # thickness = atlas_mesh_with_thickness.GetPointData().GetScalars()  # equivalent to below
     thickness_vtk = atlas_mesh_with_thickness.GetPointData().GetArray(0)
     thickness = vtk_to_numpy(thickness_vtk)
-    print(np.where(thickness == 0)[0].shape)
+    # print(np.where(thickness == 0)[0].shape)
 
     __map_thickness_to_2D_projection(embedded, thickness, ninter=300, min_thickness=-1, fpth_np=map_2d_file_np,
                                      fpth_png=map_2d_file_png, name=name)

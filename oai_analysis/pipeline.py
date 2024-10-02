@@ -1,13 +1,13 @@
 import os
 import pathlib
 
-import numpy as np
 import icon_registration.itk_wrapper as itk_wrapper
 import itk
+import numpy as np
 import vtk
-from vtk import vtkPointLocator, vtkKdTreePointLocator
-from vtk.util.numpy_support import numpy_to_vtk
 from unigradicon import preprocess, get_unigradicon
+from vtk import vtkPointLocator
+from vtk.util.numpy_support import numpy_to_vtk
 
 import mesh_processing as mp
 from analysis_object import AnalysisObject
@@ -84,13 +84,14 @@ def project_distance_to_atlas(distance_image, transformed_atlas_mesh):
         itk_index = index[::-1].tolist()  # ITK is IJK, numpy is KJI
         p = distance_image.TransformIndexToPhysicalPoint(itk_index)
         closest_index = locator.FindClosestPoint(p)
-        pixel_thickness = distance_image.GetPixel(itk_index)
+        pixel_thickness = distance_image.GetPixel(itk_index) * 2  # distance from mask edge is half of the thickness
         thickness[closest_index] = max(pixel_thickness, thickness[closest_index])  # keep thickest projection
 
     vtk_array = numpy_to_vtk(thickness, deep=True, array_type=vtk.VTK_FLOAT)
     vtk_array.SetName("vertex_thickness")
     transformed_atlas_mesh.GetPointData().AddArray(vtk_array)
     return transformed_atlas_mesh
+
 
 def analysis_pipeline(input_path, output_path, keep_intermediate_outputs):
     """
@@ -137,17 +138,19 @@ def analysis_pipeline(input_path, output_path, keep_intermediate_outputs):
         itk.transformwrite(phi_BA, os.path.join(output_path, "modelling.tfm"))
 
     print("Transforming the thickness measurements to the atlas space")
-    # we use modelling transform, which is the inverse of the image resampling transform
-    transformed_atlas_mesh_FC = transform_mesh(
-        inner_mesh_fc_atlas, transform=phi_AB, filename_prefix=output_path + "/FC_atlas",
-        keep_intermediate_outputs=keep_intermediate_outputs)
-    transformed_atlas_mesh_TC = transform_mesh(
-        inner_mesh_tc_atlas, transform=phi_AB, filename_prefix=output_path + "/TC_atlas",
-        keep_intermediate_outputs=keep_intermediate_outputs)
+    transformed_fc_distance = itk.resample_image_filter(
+        fc_distance, transform=phi_AB, reference_image=atlas_image, use_reference_image=True)
+    transformed_tc_distance = itk.resample_image_filter(
+        tc_distance, transform=phi_AB, reference_image=atlas_image, use_reference_image=True)
+    if keep_intermediate_outputs:
+        itk.imwrite(transformed_fc_distance,
+                    os.path.join(output_path, "transformed_fc_distance.nrrd"), compression=True)
+        itk.imwrite(transformed_tc_distance,
+                    os.path.join(output_path, "transformed_tc_distance.nrrd"), compression=True)
 
     print("Mapping the thickness to the atlas mesh")
-    mapped_mesh_fc = project_distance_to_atlas(fc_distance, transformed_atlas_mesh_FC)
-    mapped_mesh_tc = project_distance_to_atlas(tc_distance, transformed_atlas_mesh_TC)
+    mapped_mesh_fc = project_distance_to_atlas(transformed_fc_distance, inner_mesh_fc_atlas)
+    mapped_mesh_tc = project_distance_to_atlas(transformed_tc_distance, inner_mesh_tc_atlas)
     if keep_intermediate_outputs:
         write_vtk_mesh(mapped_mesh_fc, output_path + "/mapped_mesh_fc.vtk")
         write_vtk_mesh(mapped_mesh_tc, output_path + "/mapped_mesh_tc.vtk")
