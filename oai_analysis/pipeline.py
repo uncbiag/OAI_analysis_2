@@ -210,6 +210,18 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         oai_dir = sys.argv[1]
         test_cases = {
+            f"{oai_dir}/OAIBaselineImages/results/0.C.2/9016304/20040917/10242106": {
+                "laterality": "left", "name": "9016304_0M"},
+            f"{oai_dir}/OAIBaselineImages/results/0.C.2/9016304/20040917/10242112": {
+                "laterality": "right", "name": "9016304_0M"},
+            f"{oai_dir}/OAIBaselineImages/results/0.C.2/9021791/20040922/10250903": {
+                "laterality": "left", "name": "9021791_0M"},
+            f"{oai_dir}/OAIBaselineImages/results/0.C.2/9021791/20040922/10250909": {
+                "laterality": "right", "name": "9021791_0M"},
+            f"{oai_dir}/OAIBaselineImages/results/0.C.2/9094865/20050204/10165606": {
+                "laterality": "left", "name": "9094865_0M"},
+            f"{oai_dir}/OAIBaselineImages/results/0.C.2/9094865/20050204/10165612": {
+                "laterality": "right", "name": "9094865_0M"},
             f"{oai_dir}/OAI96MonthImages/results/10.C.1/9016304/20120831/13486606": {
                 "laterality": "left", "name": "9016304_96M"},
             f"{oai_dir}/OAI96MonthImages/results/10.C.1/9016304/20120831/13486612": {
